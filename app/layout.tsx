@@ -5,7 +5,7 @@ import './globals.css';
 // Initialize the Inter font
 const inter = Inter({ subsets: ['latin'] });
 
-// Define metadata for SEO and browser tabs
+
 export const metadata: Metadata = {
   title: 'Food Delivery App',
   description: 'Order your favorite food online easily and quickly.',
