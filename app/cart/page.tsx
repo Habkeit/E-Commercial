@@ -45,7 +45,7 @@ export default function CartPage() {
           `🎉 Order placed successfully! Your Order ID is: ${data.orderId}`,
         );
         clearCart(); // Clear the cart after successful order
-        router.push("/"); // Redirect to homepage
+        router.push("/orders"); // Redirect to orders page
       } else {
         alert(`Error: ${data.message}`);
       }

@@ -19,6 +19,14 @@ export default function Navbar() {
           Cart 🛒
         </Link>
 
+        
+        <Link
+          href="/orders"
+          className="flex items-center gap-1.5 text-gray-600 hover:text-rose-600 font-medium text-sm transition-colors"
+        >
+          📦 Orders
+        </Link>
+
         {/* Sử dụng <Show when="signed-out"> thay cho <SignedOut> */}
         <Show when="signed-out">
           <SignInButton mode="modal">
