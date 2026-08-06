@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/db';
+import { NextResponse } from "next/server";
+import { db } from "@/db";
 
 export async function GET() {
   try {
@@ -9,9 +9,15 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ success: true, data: allDishes }, { status: 200 });
+    return NextResponse.json(
+      { success: true, data: allDishes },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Error fetching dishes:", error);
-    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

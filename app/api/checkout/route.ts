@@ -1,64 +1,120 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/db';
-import { orders, orderItems } from '@/db/schema';
-import { uuidv7 } from 'uuidv7';
+// app/api/checkout/route.ts
+import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { users, customers, orders, orderItems } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
+import { randomUUID } from "crypto";
 
-interface CartItemPayload {
+interface CartItem {
   dishId: string;
-  quantity: number;
   price: number;
-  note?: string;
+  quantity: number;
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    
-    const { cart, deliveryAddress, phoneNumber } = body;
+    const { userId: clerkId } = await auth();
 
-    if (!cart || cart.length === 0) {
-      return NextResponse.json({ success: false, message: "Cart is empty!" }, { status: 400 });
+    // CHẶN KHÁCH VÃNG LAI: Bắt buộc phải có đăng nhập từ Clerk
+    if (!clerkId) {
+      return NextResponse.json(
+        { success: false, message: "Bạn phải đăng nhập để đặt hàng!" },
+        { status: 401 },
+      );
     }
 
-    const totalAmount = cart.reduce((total: number, item: CartItemPayload) => {
-      return total + (item.price * item.quantity);
-    }, 0);
-    
-    const orderId = uuidv7();
+    const { cart, deliveryAddress, phoneNumber } = await request.json();
 
-    const DUMMY_CUSTOMER_ID = "018f3a3b-1234-7890-abcd-ef1234567890"; 
+    if (!cart || cart.length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Giỏ hàng trống" },
+        { status: 400 },
+      );
+    }
 
+    // TÌM USER ĐÃ ĐỒNG BỘ: Dựa vào clerkId
+    const existingUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkId, clerkId));
+
+    if (existingUsers.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Tài khoản chưa được đồng bộ với hệ thống.",
+        },
+        { status: 404 },
+      );
+    }
+
+    const currentUser = existingUsers[0];
+
+    // XỬ LÝ KHÁCH HÀNG (CUSTOMERS):
+    // Vì bảng orders liên kết với customers, ta phải kiểm tra xem user này đã là customer chưa.
+    let dbCustomerId = "";
+    const existingCustomers = await db
+      .select()
+      .from(customers)
+      .where(eq(customers.userId, currentUser.id));
+
+    if (existingCustomers.length > 0) {
+      // Nếu đã từng mua hàng/đăng ký thông tin -> Lấy ID khách hàng cũ
+      dbCustomerId = existingCustomers[0].id;
+    } else {
+      // Nếu là lần đầu mua hàng -> Tự động tạo hồ sơ Customer mới
+      const newCustomerId = randomUUID();
+      await db.insert(customers).values({
+        id: newCustomerId,
+        userId: currentUser.id,
+        email: currentUser.email,
+        phone: phoneNumber,
+      });
+      dbCustomerId = newCustomerId;
+    }
+
+    // TÍNH TỔNG TIỀN
+    const totalAmount = cart.reduce(
+      (total: number, item: CartItem) => total + item.price * item.quantity,
+      0,
+    );
+
+    // TẠO ĐƠN HÀNG (ORDERS)
+    const newOrderId = randomUUID();
     await db.insert(orders).values({
-      id: orderId,
-      customerId: DUMMY_CUSTOMER_ID, 
+      id: newOrderId,
+      customerId: dbCustomerId,
       totalAmount: totalAmount.toString(),
-      deliveryAddress: deliveryAddress,
-      phoneNumber: phoneNumber,
-      status: 'Pending',
+      deliveryAddress,
+      phoneNumber,
+      status: "Pending",
     });
 
-    const orderItemValues = cart.map((item: CartItemPayload) => ({
-      id: uuidv7(),
-      orderId: orderId,
-      dishId: item.dishId, 
+    // LƯU CHI TIẾT MÓN ĂN (ORDER ITEMS)
+    const orderItemsData = cart.map((item: CartItem) => ({
+      id: randomUUID(), // Sinh ID thủ công vì schema không có defaultRandom()
+      orderId: newOrderId,
+      dishId: item.dishId,
       quantity: item.quantity,
       price: item.price.toString(),
-      note: item.note || '',
     }));
 
-    await db.insert(orderItems).values(orderItemValues);
+    await db.insert(orderItems).values(orderItemsData);
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Order placed successfully!", 
-      orderId: orderId 
-    }, { status: 200 });
-
+    
+    return NextResponse.json(
+      {
+        success: true,
+        orderId: newOrderId,
+      },
+      { status: 200 },
+    );
   } catch (error) {
-    console.error("Order creation error:", error);
-    return NextResponse.json({ 
-      success: false, 
-      message: "Internal Server Error" 
-    }, { status: 500 });
+    console.error("Checkout error:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

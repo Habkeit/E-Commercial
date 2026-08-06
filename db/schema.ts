@@ -19,13 +19,13 @@ export const actStateEnum = pgEnum("act_state", ["online", "offline"]);
 // field lien quan den gio -> bat buoc timestamp
 
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey(), // Generate UUIDv7 at application level before inserting
-  username: varchar("username", { length: 50 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(), // Hashed password
-  actState: actStateEnum("act_state").default("offline"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+export const users = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  clerkId: text('clerk_id').notNull().unique(),
+  email: text('email').notNull(),
+  fullName: text('full_name'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const customers = pgTable("customers", {

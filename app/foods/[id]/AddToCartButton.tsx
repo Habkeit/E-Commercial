@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useCartStore } from '@/app/store/cartStore'; // Import Zustand Store
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useCartStore } from "@/app/store/cartStore";
+import { useRouter } from "next/navigation";
 
 interface Props {
   dish: {
@@ -17,8 +17,8 @@ export default function AddToCartButton({ dish }: Props) {
   // Extract only the function you need from the store
   const addToCart = useCartStore((state) => state.addToCart);
   const router = useRouter();
-  
-  const [note, setNote] = useState('');
+
+  const [note, setNote] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [showNotification, setShowNotification] = useState(false);
 
@@ -29,7 +29,7 @@ export default function AddToCartButton({ dish }: Props) {
       price: Number(dish.price),
       quantity: quantity,
       note: note,
-      restaurantName: dish.restaurant?.name || 'Restaurant',
+      restaurantName: dish.restaurant?.name || "Restaurant",
     });
 
     setShowNotification(true);
@@ -42,25 +42,27 @@ export default function AddToCartButton({ dish }: Props) {
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Note for the restaurant (e.g., Less spicy):
         </label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Enter your note..." 
+          placeholder="Enter your note..."
           className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
         />
       </div>
 
       <div className="flex items-center space-x-4">
         <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
-          <button 
+          <button
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
             className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold"
           >
             -
           </button>
-          <span className="px-4 py-2 text-center font-medium w-12">{quantity}</span>
-          <button 
+          <span className="px-4 py-2 text-center font-medium w-12">
+            {quantity}
+          </span>
+          <button
             onClick={() => setQuantity(quantity + 1)}
             className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold"
           >
@@ -68,7 +70,7 @@ export default function AddToCartButton({ dish }: Props) {
           </button>
         </div>
 
-        <button 
+        <button
           onClick={handleAdd}
           className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20"
         >
@@ -82,8 +84,8 @@ export default function AddToCartButton({ dish }: Props) {
         </div>
       )}
 
-      <button 
-        onClick={() => router.push('/cart')}
+      <button
+        onClick={() => router.push("/cart")}
         className="w-full bg-gray-900 hover:bg-black text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
       >
         View Cart & Checkout 🛒

@@ -1,14 +1,16 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
+// app/layout.tsx
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import "./globals.css";
+import Navbar from "@/components/Navbar";
+import SyncCart from "@/components/SyncCart";
 
-// Initialize the Inter font
-const inter = Inter({ subsets: ['latin'] });
-
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Food Delivery App',
-  description: 'Order your favorite food online easily and quickly.',
+  title: "Food Delivery App",
+  description: "Order your favorite food online easily and quickly.",
 };
 
 export default function RootLayout({
@@ -17,14 +19,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        {/* 
-          Since we are now using Zustand for state management (cartStore), 
-          we no longer need a Context Provider wrapping the children! 
-        */}
-        {children}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className={inter.className}>
+          <Navbar />
+
+          <SyncCart />
+
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
