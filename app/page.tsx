@@ -9,18 +9,18 @@ export default function HomePage() {
           🚀 Online Food Delivery Platform
         </div>
 
-        {/* Main title */}
+
         <h1 className="text-4xl sm:text-6xl font-extrabold text-gray-900 tracking-tight">
           Fast food delivery,{" "}
           <span className="text-rose-600">fresh to your door!</span>
         </h1>
 
-        {/* Short description */}
+
         <p className="text-lg text-gray-600 max-w-xl mx-auto">
           Discover a diverse menu ranging from broken rice, banh mi, and milk tea to all your favorite fast foods today.
         </p>
 
-        {/* Navigation buttons */}
+
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <Link
             href="/foods"
