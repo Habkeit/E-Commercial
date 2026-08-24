@@ -12,6 +12,14 @@ import { relations } from "drizzle-orm";
 
 export const actStateEnum = pgEnum("act_state", ["online", "offline"]);
 
+export const orderStatusEnum = pgEnum("order_status", [
+  "Pending",
+  "Confirmed",
+  "Delivering",
+  "Completed",
+  "Canceled",
+]);
+
 // gom users + customers -> users
 // status: pending, confirmed, delivered, canceled -> enum
 
@@ -76,7 +84,7 @@ export const orders = pgTable("orders", {
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   deliveryAddress: text("delivery_address").notNull(),
   phoneNumber: varchar("phone_number", { length: 15 }).notNull(),
-  status: varchar("status", { length: 50 }).default("Pending"),
+  status: orderStatusEnum("status").default("Pending").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

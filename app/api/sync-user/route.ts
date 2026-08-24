@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Kiểm tra xem user đã tồn tại trong DB chưa, nếu chưa thì tạo mới
+    
     let existingUser = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
     });
@@ -34,9 +34,7 @@ export async function POST(request: Request) {
       existingUser = newUser;
     }
 
-    // 2. Xử lý đồng bộ giỏ hàng (localCart từ Guest chuyển thành giỏ hàng của User trên DB nếu cần)
-    // Tại đây bạn có thể lưu trữ giỏ hàng vào bảng cart trong DB tương ứng với existingUser.id
-
+    
     return NextResponse.json(
       { success: true, userId: existingUser.id },
       { status: 200 },
