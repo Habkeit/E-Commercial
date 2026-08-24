@@ -49,7 +49,6 @@ export async function POST(request: Request) {
 
     const currentUser = existingUsers[0];
 
-    
     let dbCustomerId = "";
     const existingCustomers = await db
       .select()
@@ -69,13 +68,11 @@ export async function POST(request: Request) {
       dbCustomerId = newCustomerId;
     }
 
-    
     const totalAmount = cart.reduce(
       (total: number, item: CartItem) => total + item.price * item.quantity,
       0,
     );
 
-    
     const newOrderId = randomUUID();
     await db.insert(orders).values({
       id: newOrderId,
@@ -86,9 +83,8 @@ export async function POST(request: Request) {
       status: "Pending",
     });
 
-    
     const orderItemsData = cart.map((item: CartItem) => ({
-      id: randomUUID(), 
+      id: randomUUID(),
       orderId: newOrderId,
       dishId: item.dishId,
       quantity: item.quantity,
@@ -97,7 +93,6 @@ export async function POST(request: Request) {
 
     await db.insert(orderItems).values(orderItemsData);
 
-    
     return NextResponse.json(
       {
         success: true,

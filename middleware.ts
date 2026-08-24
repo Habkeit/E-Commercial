@@ -1,5 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// 'createRouteMatcher' is deprecated. -> fix
+
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",

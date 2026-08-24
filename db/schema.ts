@@ -12,20 +12,16 @@ import { relations } from "drizzle-orm";
 
 export const actStateEnum = pgEnum("act_state", ["online", "offline"]);
 
-// ten bien, table, field -> eng
-// id -> uuid
-// moi table -> timestamp
-// password -> hash
-// field lien quan den gio -> bat buoc timestamp
+// gom users + customers -> users
+// status: pending, confirmed, delivered, canceled -> enum
 
-
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  clerkId: text('clerk_id').notNull().unique(),
-  email: text('email').notNull(),
-  fullName: text('full_name'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clerkId: text("clerk_id").notNull().unique(),
+  email: text("email").notNull(),
+  fullName: text("full_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const customers = pgTable("customers", {
@@ -54,7 +50,7 @@ export const restaurants = pgTable("restaurants", {
   logo: varchar("logo", { length: 255 }),
   note: text("note"),
   openTime: timestamp("open_time").notNull(),
-  closeTime: timestamp("close_time").notNull(), 
+  closeTime: timestamp("close_time").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -99,8 +95,6 @@ export const orderItems = pgTable("order_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-
-
 
 export const customerRelations = relations(customers, ({ one, many }) => ({
   user: one(users, {

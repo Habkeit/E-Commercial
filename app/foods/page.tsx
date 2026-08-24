@@ -16,6 +16,7 @@ interface Dish {
 }
 
 // Fetch data directly from DB in Server Component
+// -> API
 async function getDishes(searchQuery?: string): Promise<Dish[]> {
   try {
     const data = await db.query.dishes.findMany({
