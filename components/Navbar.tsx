@@ -19,7 +19,6 @@ export default function Navbar() {
           Cart 🛒
         </Link>
 
-        
         <Link
           href="/orders"
           className="flex items-center gap-1.5 text-gray-600 hover:text-rose-600 font-medium text-sm transition-colors"
@@ -27,7 +26,6 @@ export default function Navbar() {
           📦 Orders
         </Link>
 
-        {/* Sử dụng <Show when="signed-out"> thay cho <SignedOut> */}
         <Show when="signed-out">
           <SignInButton mode="modal">
             <button className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
@@ -36,7 +34,6 @@ export default function Navbar() {
           </SignInButton>
         </Show>
 
-        {/* Sử dụng <Show when="signed-in"> thay cho <SignedIn> */}
         <Show when="signed-in">
           <UserButton />
         </Show>

@@ -1,29 +1,24 @@
+// app/foods/page.tsx
 import Link from "next/link";
 import { db } from "@/db";
-import { dishes } from "@/db/schema";
+import { restaurants } from "@/db/schema";
 import { ilike } from "drizzle-orm";
 
 interface Restaurant {
-  name: string;
-}
-
-interface Dish {
   id: string;
   name: string;
-  description: string | null;
-  price: string | number;
-  restaurant?: Restaurant | null;
+  houseNumber: string;
+  street: string;
+  ward: string;
+  province: string;
+  note: string | null;
 }
 
-// Fetch data directly from DB in Server Component
-// -> API
-async function getDishes(searchQuery?: string): Promise<Dish[]> {
+// Lấy danh sách nhà hàng trực tiếp từ DB, hỗ trợ tìm kiếm theo tên nhà hàng
+async function getRestaurants(searchQuery?: string): Promise<Restaurant[]> {
   try {
-    const data = await db.query.dishes.findMany({
-      where: searchQuery ? ilike(dishes.name, `%${searchQuery}%`) : undefined,
-      with: {
-        restaurant: true,
-      },
+    const data = await db.query.restaurants.findMany({
+      where: searchQuery ? ilike(restaurants.name, `%${searchQuery}%`) : undefined,
     });
     return data;
   } catch (error) {
@@ -40,70 +35,77 @@ export default async function FoodsPage({
   const resolvedParams = await searchParams;
   const searchQuery = resolvedParams.query || "";
 
-  const fetchedDishes = await getDishes(searchQuery);
+  const fetchedRestaurants = await getRestaurants(searchQuery);
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          🔥 Food & Beverage Menu
-        </h1>
-        <p className="text-gray-600 mb-8">
-          Explore delicious dishes from our partner restaurants.
-        </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              🏪 Partner Restaurants
+            </h1>
+            <p className="text-gray-600">
+              Select a restaurant to explore their delicious menu and dishes.
+            </p>
+          </div>
+          <Link
+            href="/orders"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl text-sm transition-all shadow-sm"
+          >
+            <span>📦</span>
+            <span>View Order History</span>
+          </Link>
+        </div>
 
-        {/* Basic Search Form */}
+        {/* Search Form */}
         <form className="mb-8 flex gap-4 max-w-md">
           <input
             type="text"
             name="query"
             defaultValue={searchQuery}
-            placeholder="Search for dishes..."
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
+            placeholder="Search for restaurants..."
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400 bg-white"
           />
           <button
             type="submit"
-            className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800"
+            className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
           >
             Search
           </button>
         </form>
 
-        {fetchedDishes.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            No dishes found matching &quot;{searchQuery}&quot;
+        {fetchedRestaurants.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 bg-white rounded-2xl border border-gray-100 shadow-sm">
+            No restaurants found matching &quot;{searchQuery}&quot;
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {fetchedDishes.map((dish) => (
-              <div
-                key={dish.id}
-                className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 p-5 flex flex-col justify-between hover:shadow-lg transition-shadow"
+            {fetchedRestaurants.map((restaurant) => (
+              <Link
+                key={restaurant.id}
+                href={`/restaurant/${restaurant.id}`}
+                className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 p-6 flex flex-col justify-between hover:shadow-md hover:border-rose-500 transition-all group"
               >
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full">
-                    {dish.restaurant?.name || "Restaurant"}
-                  </span>
-                  <h2 className="text-xl font-bold text-gray-900 mt-3">
-                    {dish.name}
+                  <h2 className="text-xl font-bold text-gray-900 group-hover:text-rose-600 transition-colors">
+                    {restaurant.name}
                   </h2>
-                  <p className="text-gray-500 text-sm mt-1 line-clamp-2">
-                    {dish.description ||
-                      "No description available for this dish."}
+                  <p className="text-gray-500 text-sm mt-2">
+                    📍 {restaurant.houseNumber} {restaurant.street}, {restaurant.ward}, {restaurant.province}
                   </p>
+                  {restaurant.note && (
+                    <span className="inline-block mt-3 text-xs font-semibold px-2.5 py-1 bg-rose-50 text-rose-600 rounded-full">
+                      💡 {restaurant.note}
+                    </span>
+                  )}
                 </div>
-                <div className="mt-6 flex items-center justify-between">
-                  <span className="text-lg font-bold text-rose-600">
-                    {Number(dish.price).toLocaleString("en-US")} VND
+                <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-rose-500 group-hover:underline">
+                    View Menu & Dishes →
                   </span>
-                  <Link
-                    href={`/foods/${dish.id}`}
-                    className="bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                  >
-                    View Details
-                  </Link>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
