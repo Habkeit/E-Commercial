@@ -17,7 +17,6 @@ export async function POST(request: Request) {
       );
     }
 
-    
     let existingUser = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
     });
@@ -32,9 +31,17 @@ export async function POST(request: Request) {
         })
         .returning();
       existingUser = newUser;
+    } else {
+      await db
+        .update(users)
+        .set({
+          email,
+          fullName: fullName || existingUser.fullName,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.clerkId, clerkId));
     }
 
-    
     return NextResponse.json(
       { success: true, userId: existingUser.id },
       { status: 200 },

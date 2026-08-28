@@ -1,6 +1,6 @@
 // app/orders/page.tsx
 import { db } from "@/db";
-import { users, customers, orders } from "@/db/schema";
+import { users, orders } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -25,20 +25,12 @@ export default async function OrdersPage() {
   if (existingUsers.length > 0) {
     const currentUser = existingUsers[0];
 
-    const existingCustomers = await db
+    
+    myOrders = await db
       .select()
-      .from(customers)
-      .where(eq(customers.userId, currentUser.id));
-
-    if (existingCustomers.length > 0) {
-      const currentCustomer = existingCustomers[0];
-
-      myOrders = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.customerId, currentCustomer.id))
-        .orderBy(desc(orders.createdAt));
-    }
+      .from(orders)
+      .where(eq(orders.user_id, currentUser.id))
+      .orderBy(desc(orders.createdAt));
   }
 
   return (

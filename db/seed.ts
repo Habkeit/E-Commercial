@@ -1,5 +1,6 @@
+// seed.ts
 import { db } from './index';
-import { users, customers, restaurants, dishes } from './schema';
+import { users, restaurants, dishes } from './schema';
 import { uuidv7 } from 'uuidv7';
 
 function createTimestampFromTime(timeString: string) {
@@ -13,12 +14,12 @@ async function main() {
   console.log("🔥 Seeding real data into the Database (UUIDv7 Mode)...");
 
   // UUIDs for Users
-  const user1_id = uuidv7(); // Customer 1
-  const user2_id = uuidv7(); // Customer 2
-  const user3_id = uuidv7(); // Restaurant 1
-  const user4_id = uuidv7(); // Restaurant 2
-  const user5_id = uuidv7(); // Restaurant 3
-  const user6_id = uuidv7(); // Restaurant 4
+  const user1_id = uuidv7(); 
+  const user2_id = uuidv7();
+  const user3_id = uuidv7();
+  const user4_id = uuidv7();
+  const user5_id = uuidv7();
+  const user6_id = uuidv7();
 
   // UUIDs for Restaurants
   const res1_id = uuidv7();
@@ -31,9 +32,8 @@ async function main() {
   const category_coffee = uuidv7();
   const category_fastfood = uuidv7();
 
-  // 1. Thêm Users (Đã cập nhật theo schema mới của Clerk)
+  
   await db.insert(users).values([
-    // Tạo dummy clerkId cho các user mẫu
     { id: user1_id, clerkId: 'dummy_clerk_1', email: 'quachha365@gmail.com', fullName: 'Quach Ha' },
     { id: user2_id, clerkId: 'dummy_clerk_2', email: 'QuangThang2108@gmail.com', fullName: 'Quang Thang' },
     { id: user3_id, clerkId: 'dummy_clerk_3', email: 'comtambao@gmail.com', fullName: 'Com Tam Bao Map' },
@@ -42,13 +42,7 @@ async function main() {
     { id: user6_id, clerkId: 'dummy_clerk_6', email: 'kfc@gmail.com', fullName: 'KFC Thu Duc' }
   ]);
 
-  // 2. Thêm Customers
-  await db.insert(customers).values([
-    { id: uuidv7(), userId: user1_id, email: 'quachha365@gmail.com', phone: '0987616319' },
-    { id: uuidv7(), userId: user2_id, email: 'QuangThang2108@gmail.com', phone: '0234534617' },
-  ]);
 
-  // 3. Thêm Restaurants
   await db.insert(restaurants).values([
     {
       id: res1_id, userId: user3_id, name: 'Bao Map Broken Rice', 
@@ -80,7 +74,7 @@ async function main() {
     }
   ]);
 
-  // 4. Thêm Dishes
+  // 3. Thêm Dishes
   await db.insert(dishes).values([
     { id: uuidv7(), restaurantId: res1_id, categoryId: category_rice, name: 'Pork Rib Broken Rice', price: '35000.00', description: 'Rice, pork rib, soup, pork rinds' },
     { id: uuidv7(), restaurantId: res1_id, categoryId: category_rice, name: 'Special Broken Rice', price: '60000.00', description: 'Pork rib, pork skin, egg, meatloaf, pork rinds' },

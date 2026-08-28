@@ -6,6 +6,7 @@ import Link from "next/link";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import SyncCart from "@/components/SyncCart";
+import SyncUser from "@/components/SyncUser";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +25,8 @@ export default function RootLayout({
       <html lang="en">
         <body className={inter.className}>
           <Navbar />
-          <SyncCart />
+          {/* <SyncCart />
+          <SyncUser /> */}
           
           <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-end gap-4">
             <Link

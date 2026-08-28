@@ -1,7 +1,7 @@
 // app/api/checkout/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { users, customers, orders, orderItems } from "@/db/schema";
+import { users, orders, orderItems } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { randomUUID } from "crypto";
@@ -18,7 +18,10 @@ export async function POST(request: Request) {
 
     if (!clerkId) {
       return NextResponse.json(
-        { success: false, message: "Bạn phải đăng nhập để đặt hàng!" },
+        {
+          success: false,
+          message: "You have to be logged in to place an order!",
+        },
         { status: 401 },
       );
     }
@@ -27,7 +30,7 @@ export async function POST(request: Request) {
 
     if (!cart || cart.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Giỏ hàng trống" },
+        { success: false, message: "Cart is empty" },
         { status: 400 },
       );
     }
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Tài khoản chưa được đồng bộ với hệ thống.",
+          message: "Account has not been synchronized with the system.",
         },
         { status: 404 },
       );
@@ -49,34 +52,16 @@ export async function POST(request: Request) {
 
     const currentUser = existingUsers[0];
 
-    let dbCustomerId = "";
-    const existingCustomers = await db
-      .select()
-      .from(customers)
-      .where(eq(customers.userId, currentUser.id));
-
-    if (existingCustomers.length > 0) {
-      dbCustomerId = existingCustomers[0].id;
-    } else {
-      const newCustomerId = randomUUID();
-      await db.insert(customers).values({
-        id: newCustomerId,
-        userId: currentUser.id,
-        email: currentUser.email,
-        phone: phoneNumber,
-      });
-      dbCustomerId = newCustomerId;
-    }
-
     const totalAmount = cart.reduce(
       (total: number, item: CartItem) => total + item.price * item.quantity,
       0,
     );
 
     const newOrderId = randomUUID();
+
     await db.insert(orders).values({
       id: newOrderId,
-      customerId: dbCustomerId,
+      user_id: currentUser.id,
       totalAmount: totalAmount.toString(),
       deliveryAddress,
       phoneNumber,
