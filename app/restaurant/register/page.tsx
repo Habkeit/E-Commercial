@@ -18,14 +18,13 @@ export default function RegisterRestaurantPage() {
   const [province, setProvince] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-
   const lang = useLanguageStore((state) => state.lang);
-  const t = dict[lang]; 
+  const t = dict[lang];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !street || !province) {
+    if (!name || !houseNumber || !street || !ward || !province) {
       messageApi.warning(t.fillRequiredFields);
       return;
     }
@@ -98,6 +97,7 @@ export default function RegisterRestaurantPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t.restaurantNamePlaceholder}
+              required
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
             />
           </div>
@@ -105,13 +105,14 @@ export default function RegisterRestaurantPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.houseNumber}
+                {t.houseNumber} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={houseNumber}
                 onChange={(e) => setHouseNumber(e.target.value)}
                 placeholder={t.houseNumberPlaceholder}
+                required
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>
@@ -124,6 +125,7 @@ export default function RegisterRestaurantPage() {
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
                 placeholder={t.streetPlaceholder}
+                required
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>
@@ -132,13 +134,15 @@ export default function RegisterRestaurantPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.ward}
+                {t.ward} <span className="text-rose-500">*</span>{" "}
+                {/* 👈 Thêm sao đỏ */}
               </label>
               <input
                 type="text"
                 value={ward}
                 onChange={(e) => setWard(e.target.value)}
                 placeholder={t.wardPlaceholder}
+                required
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>
@@ -151,6 +155,7 @@ export default function RegisterRestaurantPage() {
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
                 placeholder={t.cityProvincePlaceholder}
+                required
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>

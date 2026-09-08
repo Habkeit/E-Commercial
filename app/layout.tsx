@@ -9,23 +9,27 @@ import { cookies } from "next/headers";
 import { dict } from "@/app/utils/dictionary";
 
 const inter = Inter({ subsets: ["latin"] });
-const cookieStore = await cookies();
-const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-const t = dict[currentLang as keyof typeof dict];
 
 export const metadata: Metadata = {
   title: "Food Delivery App",
   description: "Order your favorite food online easily and quickly.",
 };
 
-export default function RootLayout({
+// Đảm bảo RootLayout là async function
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // 👈 Đưa việc lấy cookie và từ điển vào BÊN TRONG component
+  const cookieStore = await cookies();
+  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
+  const t = dict[currentLang as keyof typeof dict];
+
   return (
     <ClerkProvider>
-      <html lang="en">
+      {/* 👈 Tiện thể cập nhật thuộc tính lang của trang web theo ngôn ngữ hiện tại */}
+      <html lang={currentLang}> 
         <body className={inter.className}>
           <Navbar />
           {/* <SyncCart />
