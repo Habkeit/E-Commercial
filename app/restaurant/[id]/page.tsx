@@ -1,10 +1,10 @@
-// app/restaurants/[id]/page.tsx
+// app/restaurant/[id]/page.tsx
 import { db } from "@/db";
 import { restaurants, dishes, categories } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { addToCart } from "./actions";
+import AddToCartButton from "./AddToCartButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -13,7 +13,6 @@ interface PageProps {
 export default async function RestaurantDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  // 1. Lấy thông tin nhà hàng
   const [restaurant] = await db
     .select()
     .from(restaurants)
@@ -23,14 +22,12 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // 2. Lấy danh mục của riêng nhà hàng này, sắp xếp theo sortOrder
   const restaurantCategories = await db
     .select()
     .from(categories)
     .where(eq(categories.restaurantId, id))
     .orderBy(asc(categories.sortOrder));
 
-  // 3. Lấy toàn bộ món ăn thuộc nhà hàng này
   const restaurantDishes = await db
     .select()
     .from(dishes)
@@ -63,7 +60,6 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-3">
           <h1 className="text-3xl font-extrabold text-gray-900">
             {restaurant.name}
@@ -79,11 +75,11 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
           )}
         </div>
 
-
         <div className="space-y-10">
           {restaurantCategories.length === 0 ? (
             <p className="text-center text-gray-500 bg-white p-8 rounded-2xl border border-gray-100">
-              This restaurant has no categories or dishes available at the moment. Please check back later!
+              This restaurant has no categories or dishes available at the
+              moment. Please check back later!
             </p>
           ) : (
             restaurantCategories.map((category) => {
@@ -125,19 +121,7 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
                             {Number(dish.price).toLocaleString()} VND
                           </span>
 
-                          <form
-                            action={async () => {
-                              "use server";
-                              await addToCart(dish.id);
-                            }}
-                          >
-                            <button
-                              type="submit"
-                              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
-                            >
-                              Add to Cart
-                            </button>
-                          </form>
+                          <AddToCartButton dishId={dish.id} />
                         </div>
                       </div>
                     ))}
