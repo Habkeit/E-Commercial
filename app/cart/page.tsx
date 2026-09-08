@@ -7,6 +7,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { uuidv7 } from "uuidv7";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { dict } from "@/app/utils/dictionary";
 
 export default async function CartPage() {
   const { userId: clerkId } = await auth();
@@ -43,6 +45,10 @@ export default async function CartPage() {
       .from(users)
       .where(eq(users.clerkId, clerkId));
   }
+
+  const cookieStore = await cookies();
+  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
+  const t = dict[currentLang as keyof typeof dict];
 
   
   const items = await db
@@ -114,17 +120,16 @@ export default async function CartPage() {
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
         <div className="text-center bg-white p-10 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            🛒 Your cart is empty
+            🛒 {t.emptyCart}
           </h2>
           <p className="text-gray-500 mb-6 text-sm">
-            Take a look at our partner restaurants and choose your favorite
-            dishes!
+            {t.emptyCartDesc}
           </p>
           <Link
             href="/foods"
             className="inline-block bg-rose-500 hover:bg-rose-600 text-white font-medium px-6 py-3 rounded-xl transition-colors"
           >
-            Explore Menu Now
+            {t.exploreMenu}
           </Link>
         </div>
       </main>
@@ -137,7 +142,7 @@ export default async function CartPage() {
         {/* Cart Items Section */}
         <div className="lg:col-span-2 space-y-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            🛒 Shopping Cart
+            🛒 {t.ShoppingCart}
           </h1>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-6">
             <div className="divide-y divide-gray-100">
@@ -178,13 +183,13 @@ export default async function CartPage() {
         {/* Delivery Info & Checkout Form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-fit space-y-6">
           <h2 className="text-xl font-bold text-gray-900 border-b pb-4">
-            Delivery Information
+            {t.deliveryInfo}
           </h2>
 
           <form action={handleCheckout} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Phone Number <span className="text-red-500">*</span>
+                {t.phone} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -195,25 +200,24 @@ export default async function CartPage() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
               />
               <p className="text-xs text-gray-500 mt-1">
-                You can edit this number if you want to use a different contact
-                for this order.
+                {t.phoneNote}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Delivery Address <span className="text-red-500">*</span>
+                {t.DeliveryAddress} <span className="text-red-500">*</span>
               </label>
               <textarea
                 name="address"
                 required
-                placeholder="Enter house number, street name, ward/district..."
+                placeholder={t.addressPlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-24 resize-none text-gray-800 placeholder-gray-400"
               ></textarea>
             </div>
 
             <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-              <span className="text-gray-500">Total Payment:</span>
+              <span className="text-gray-500">{t.totalPayment}:</span>
               <span className="text-2xl font-extrabold text-rose-600">
                 {totalAmount.toLocaleString("en-US")} VND
               </span>
@@ -223,7 +227,7 @@ export default async function CartPage() {
               type="submit"
               className="w-full bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20"
             >
-              Confirm Order 🚀
+              {t.confirmOrder}
             </button>
           </form>
         </div>

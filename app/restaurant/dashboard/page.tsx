@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { dict } from "@/app/utils/dictionary";
 
 export default async function RestaurantDashboard() {
   // 1. Authentication Check
@@ -28,22 +30,26 @@ export default async function RestaurantDashboard() {
     .from(restaurants)
     .where(eq(restaurants.userId, currentUser.id));
 
-  // If the user does not own a restaurant, show a prompt or registration notice
+  // Lấy ngôn ngữ từ Cookie
+  const cookieStore = await cookies();
+  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
+  const t = dict[currentLang as keyof typeof dict];
+
   if (myRestaurants.length === 0) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            No Restaurant Found
+            {t.noRestaurantTitle} 
           </h1>
           <p className="text-gray-500 mb-6">
-            Your account is not registered as a restaurant partner yet.
+            {t.noRestaurantDesc} {/* 👈 Dịch text */}
           </p>
           <Link
             href="/"
             className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
           >
-            Back to Home
+            {t.backToHome} {/* 👈 Dịch text */}
           </Link>
         </div>
       </main>
@@ -66,13 +72,14 @@ export default async function RestaurantDashboard() {
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-semibold">
-              Restaurant Dashboard
+              {t.restaurantDashboard}
             </span>
             <h1 className="text-3xl font-extrabold text-gray-900 mt-2">
               {restaurant.name}
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              Address: {restaurant.houseNumber} {restaurant.street},{" "}
+              {t.address}: {restaurant.houseNumber} {restaurant.street},{" "}
+              {/* 👈 Dịch chữ Address */}
               {restaurant.ward}, {restaurant.province}
             </p>
           </div>
@@ -81,26 +88,27 @@ export default async function RestaurantDashboard() {
               href="/restaurant/dishes/new"
               className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-rose-500/20"
             >
-              + Add New Dish
+              {t.addNewDish} {/* 👈 Dịch nút Add Dish */}
             </Link>
           </div>
           <Link
             href="/restaurant/orders"
             className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-orange-500/20"
           >
-            📦 View Orders
+            📦 {t.restaurantOrders}
           </Link>
         </div>
 
         {/* Menu Management Section */}
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <h2 className="text-xl font-bold text-gray-900 border-b pb-4">
-            Menu Management ({restaurantDishes.length} dishes)
+            {t.menuManagement} ({restaurantDishes.length} {t.dishesCount}){" "}
+            {/* 👈 Dịch title */}
           </h2>
 
           {restaurantDishes.length === 0 ? (
             <p className="text-gray-500 text-center py-6">
-              Your menu is currently empty. Add your first dish!
+              {t.emptyMenu} {/* 👈 Dịch thông báo menu trống */}
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,7 +122,8 @@ export default async function RestaurantDashboard() {
                       {dish.name}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                      {dish.description || "No description provided."}
+                      {dish.description || t.noDescription}{" "}
+                      {/* 👈 Dịch mô tả trống */}
                     </p>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200/60 flex justify-between items-center">
@@ -122,7 +131,7 @@ export default async function RestaurantDashboard() {
                       {Number(dish.price).toLocaleString("en-US")} VND
                     </span>
                     <span className="text-xs bg-emerald-100 text-emerald-700 font-medium px-2.5 py-1 rounded-lg">
-                      Active
+                      {t.activeStatus} {/* 👈 Dịch badge Active */}
                     </span>
                   </div>
                 </div>

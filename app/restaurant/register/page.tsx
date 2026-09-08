@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { message } from "antd";
+import { useLanguageStore } from "@/app/store/languageStore";
+import { dict } from "@/app/utils/dictionary";
 
 export default function RegisterRestaurantPage() {
   const router = useRouter();
@@ -16,11 +18,15 @@ export default function RegisterRestaurantPage() {
   const [province, setProvince] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+
+  const lang = useLanguageStore((state) => state.lang);
+  const t = dict[lang]; 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name || !street || !province) {
-      messageApi.warning("Please fill in all required fields!");
+      messageApi.warning(t.fillRequiredFields);
       return;
     }
 
@@ -42,17 +48,17 @@ export default function RegisterRestaurantPage() {
       const data = await response.json();
 
       if (data.success) {
-        messageApi.success("🎉 Restaurant registered successfully!");
+        messageApi.success(t.registerSuccess);
         setTimeout(() => {
           router.push("/restaurant/dashboard");
           router.refresh();
         }, 500);
       } else {
-        messageApi.error(`Error: ${data.message}`);
+        messageApi.error(`${t.errorPrefix}${data.message}`);
       }
     } catch (error) {
       console.error("Connection error:", error);
-      messageApi.error("Cannot connect to the server.");
+      messageApi.error(t.connectionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -65,17 +71,17 @@ export default function RegisterRestaurantPage() {
         <div className="flex justify-between items-center">
           <div>
             <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-semibold">
-              Partner Program
+              {t.partnerProgram}
             </span>
             <h1 className="text-2xl font-bold text-gray-900 mt-2">
-              Register Your Restaurant
+              {t.registerRestaurant}
             </h1>
           </div>
           <Link
             href="/"
             className="text-sm text-gray-500 hover:text-gray-900 font-medium"
           >
-            ← Back to Home
+            ← {t.backToHome}
           </Link>
         </div>
 
@@ -85,13 +91,13 @@ export default function RegisterRestaurantPage() {
         >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Restaurant Name <span className="text-rose-500">*</span>
+              {t.restaurantName} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Delicious Corner"
+              placeholder={t.restaurantNamePlaceholder}
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
             />
           </div>
@@ -99,25 +105,25 @@ export default function RegisterRestaurantPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                House Number
+                {t.houseNumber}
               </label>
               <input
                 type="text"
                 value={houseNumber}
                 onChange={(e) => setHouseNumber(e.target.value)}
-                placeholder="e.g., 123"
+                placeholder={t.houseNumberPlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Street <span className="text-rose-500">*</span>
+                {t.street} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
-                placeholder="e.g., Le Van Viet"
+                placeholder={t.streetPlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>
@@ -126,25 +132,25 @@ export default function RegisterRestaurantPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ward
+                {t.ward}
               </label>
               <input
                 type="text"
                 value={ward}
                 onChange={(e) => setWard(e.target.value)}
-                placeholder="e.g., Hiep Phu"
+                placeholder={t.wardPlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                City / Province <span className="text-rose-500">*</span>
+                {t.cityProvince} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
-                placeholder="e.g., Ho Chi Minh City"
+                placeholder={t.cityProvincePlaceholder}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
               />
             </div>
@@ -159,7 +165,7 @@ export default function RegisterRestaurantPage() {
                 : "bg-rose-500 hover:bg-rose-600"
             }`}
           >
-            {isSubmitting ? "Registering..." : "Complete Registration 🚀"}
+            {isSubmitting ? t.registering : t.completeRegistration}
           </button>
         </form>
       </div>

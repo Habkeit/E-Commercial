@@ -5,6 +5,8 @@ import { eq, desc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { dict } from "@/app/utils/dictionary";
 
 type Order = typeof orders.$inferSelect;
 
@@ -14,6 +16,11 @@ export default async function OrdersPage() {
   if (!clerkId) {
     redirect("/sign-in");
   }
+
+  
+  const cookieStore = await cookies();
+  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
+  const t = dict[currentLang as keyof typeof dict];
 
   let myOrders: Order[] = [];
 
@@ -36,17 +43,18 @@ export default async function OrdersPage() {
     <main className="min-h-screen bg-gray-50 py-12 px-6">
       <div className="max-w-4xl mx-auto space-y-8">
         <h1 className="text-3xl font-extrabold text-gray-900">
-          📦 Order History
+          📦 {t.orderHistoryTitle}
         </h1>
 
         {myOrders.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl shadow-sm text-center border border-gray-100">
-            <p className="text-gray-500 mb-4">You have no orders yet.</p>
+            <p className="text-gray-500 mb-4">{t.noOrdersText}</p>{" "}
+            {/* 👈 Dịch thông báo */}
             <Link
               href="/foods"
               className="text-rose-500 font-semibold hover:underline"
             >
-              Start ordering now!
+              {t.startOrderingLink}
             </Link>
           </div>
         ) : (
@@ -58,16 +66,19 @@ export default async function OrdersPage() {
               >
                 <div>
                   <p className="text-sm text-gray-500">
-                    Order ID:{" "}
+                    {t.orderIdLabel}
                     <span className="font-mono text-gray-800">
                       {order.id.slice(0, 8)}...
                     </span>
                   </p>
                   <p className="text-gray-600 mt-1">
-                    Date: {new Date(order.createdAt).toLocaleString()}
+                    {t.dateLabel}{" "}
+                    {new Date(order.createdAt).toLocaleString(
+                      currentLang === "vi" ? "vi-VN" : "en-US",
+                    )}{" "}
                   </p>
                   <p className="text-gray-600">
-                    Address: {order.deliveryAddress}
+                    {t.address}: {order.deliveryAddress}{" "}
                   </p>
                 </div>
 
@@ -86,7 +97,13 @@ export default async function OrdersPage() {
                             : "bg-red-100 text-red-700"
                     }`}
                   >
-                    {order.status}
+                    {order.status === "Pending" && t.statusPending}
+                    {order.status === "Delivering" && t.statusDelivering}
+                    {order.status === "Completed" && t.statusCompleted}
+                    {order.status !== "Pending" &&
+                      order.status !== "Delivering" &&
+                      order.status !== "Completed" &&
+                      t.statusCancelled}
                   </span>
                 </div>
               </div>
