@@ -8,6 +8,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { dict } from "@/app/utils/dictionary";
 import { revalidatePath } from "next/cache";
+import DeleteConfirmButton from "@/components/DeleteConfirmButton";
 
 export default async function RestaurantDashboard({
   searchParams,
@@ -86,29 +87,55 @@ export default async function RestaurantDashboard({
     redirect("/restaurant/dashboard");
   }
 
+  async function deleteRestaurant() {
+    "use server";
+
+    await db.delete(dishes).where(eq(dishes.restaurantId, restaurant.id));
+    await db.delete(restaurants).where(eq(restaurants.id, restaurant.id));
+
+    revalidatePath("/restaurant/dashboard");
+    redirect("/");
+  }
+
   async function updateDishInfo(formData: FormData) {
     "use server";
 
     const dishId = formData.get("dishId") as string;
     const name = formData.get("name") as string;
-    const price = formData.get("price") as string;
+    const priceStr = formData.get("price") as string;
     const description = formData.get("description") as string;
 
-    if (!dishId || !name || !price) {
+    if (!dishId || !name || !priceStr) {
       throw new Error("Missing required fields");
+    }
+
+    const priceNum = Number(priceStr);
+    if (isNaN(priceNum) || priceNum < 0 || !Number.isInteger(priceNum)) {
+      throw new Error("Invalid price. VND must be a positive integer.");
     }
 
     await db
       .update(dishes)
       .set({
         name,
-        price,
+        price: priceStr,
         description: description || null,
       })
       .where(eq(dishes.id, dishId));
 
     revalidatePath("/restaurant/dashboard");
     redirect("/restaurant/dashboard");
+  }
+
+  async function deleteDish(formData: FormData) {
+    "use server";
+
+    const dishId = formData.get("dishId") as string;
+    if (!dishId) return;
+
+    await db.delete(dishes).where(eq(dishes.id, dishId));
+
+    revalidatePath("/restaurant/dashboard");
   }
 
   const restaurantDishes = await db
@@ -133,7 +160,7 @@ export default async function RestaurantDashboard({
               {restaurant.ward}, {restaurant.province}
             </p>
           </div>
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-3 flex-wrap items-center">
             {!isEditing && (
               <Link
                 href="?edit=true"
@@ -154,6 +181,19 @@ export default async function RestaurantDashboard({
             >
               📦 {t.restaurantOrders}
             </Link>
+
+            <form action={deleteRestaurant}>
+              <DeleteConfirmButton
+                confirmMessage={
+                  currentLang === "vi"
+                    ? "Bạn có chắc chắn muốn xóa nhà hàng này cùng toàn bộ menu không?"
+                    : "Are you sure you want to delete this restaurant and its menu?"
+                }
+                className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm border border-red-200 cursor-pointer"
+              >
+                🗑️ {currentLang === "vi" ? "Xóa quán" : "Delete"}
+              </DeleteConfirmButton>
+            </form>
           </div>
         </div>
 
@@ -282,7 +322,7 @@ export default async function RestaurantDashboard({
                         <input type="hidden" name="dishId" value={dish.id} />
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">
                             {t.dishNameLabel}{" "}
                             <span className="text-rose-500">*</span>
                           </label>
@@ -296,7 +336,7 @@ export default async function RestaurantDashboard({
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">
                             {t.dishPriceLabel}{" "}
                             <span className="text-rose-500">*</span>
                           </label>
@@ -304,13 +344,15 @@ export default async function RestaurantDashboard({
                             type="number"
                             name="price"
                             defaultValue={dish.price}
+                            min="0"
+                            step="1"
                             required
                             className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">
                             {t.dishDescLabel}
                           </label>
                           <textarea
@@ -345,16 +387,35 @@ export default async function RestaurantDashboard({
                     key={dish.id}
                     className="border border-gray-100 bg-gray-50/50 p-5 rounded-xl flex flex-col justify-between relative group hover:border-rose-200 transition-colors"
                   >
-                    <Link
-                      href={`?editDish=${dish.id}`}
-                      className="absolute top-3 right-3 text-gray-400 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 bg-white rounded-full p-1.5 shadow-sm"
-                      title={t.editBtn}
-                    >
-                      ✏️
-                    </Link>
+                    <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full shadow-sm p-1 border border-gray-100">
+                      <Link
+                        href={`?editDish=${dish.id}`}
+                        className="text-gray-400 hover:text-rose-600 p-1 rounded-full transition-colors"
+                        title={t.editBtn}
+                      >
+                        ✏️
+                      </Link>
+
+                      <form action={deleteDish}>
+                        <input type="hidden" name="dishId" value={dish.id} />
+                        <DeleteConfirmButton
+                          confirmMessage={
+                            currentLang === "vi"
+                              ? "Bạn có chắc chắn muốn xóa món này?"
+                              : "Are you sure you want to delete this dish?"
+                          }
+                          className="text-gray-400 hover:text-red-600 p-1 rounded-full transition-colors cursor-pointer"
+                          title={
+                            currentLang === "vi" ? "Xóa món" : "Delete dish"
+                          }
+                        >
+                          🗑️
+                        </DeleteConfirmButton>
+                      </form>
+                    </div>
 
                     <div>
-                      <h3 className="font-bold text-gray-900 text-lg pr-6">
+                      <h3 className="font-bold text-gray-900 text-lg pr-12">
                         {dish.name}
                       </h3>
                       <p className="text-sm text-gray-500 mt-1 line-clamp-2">
