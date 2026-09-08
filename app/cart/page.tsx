@@ -15,14 +15,15 @@ export default async function CartPage() {
     redirect("/sign-in");
   }
 
-  // 1. Lấy thông tin user hiện tại từ DB (tự động đồng bộ nếu chưa có)
+  const clerkUser = await getClerkUser();
+  const defaultPhone = clerkUser?.phoneNumbers?.[0]?.phoneNumber || "";
+
   let [currentUser] = await db
     .select()
     .from(users)
     .where(eq(users.clerkId, clerkId));
 
   if (!currentUser) {
-    const clerkUser = await getClerkUser();
     const email =
       clerkUser?.emailAddresses[0]?.emailAddress || "no-email@gmail.com";
     const fullName =
@@ -43,7 +44,7 @@ export default async function CartPage() {
       .where(eq(users.clerkId, clerkId));
   }
 
-  // 2. Lấy danh sách sản phẩm trong giỏ hàng từ cơ sở dữ liệu
+  
   const items = await db
     .select({
       cartId: cartItems.id,
@@ -62,7 +63,7 @@ export default async function CartPage() {
     0,
   );
 
-  // Server Action xử lý đặt hàng ngay trong trang
+  
   async function handleCheckout(formData: FormData) {
     "use server";
 
@@ -88,7 +89,7 @@ export default async function CartPage() {
       status: "Pending",
     });
 
-    // 2. Chuyển các món từ giỏ hàng sang order_items
+  
     for (const item of items) {
       await db.insert(orderItems).values({
         id: uuidv7(),
@@ -100,7 +101,7 @@ export default async function CartPage() {
       });
     }
 
-    // 3. Xóa sạch giỏ hàng của user sau khi đặt thành công
+    
     await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
 
     revalidatePath("/cart");
@@ -189,9 +190,14 @@ export default async function CartPage() {
                 type="text"
                 name="phoneNumber"
                 required
+                defaultValue={defaultPhone} // 👈 Đã thêm defaultValue tự động điền số điện thoại
                 placeholder="e.g., 0987654321"
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                You can edit this number if you want to use a different contact
+                for this order.
+              </p>
             </div>
 
             <div>
