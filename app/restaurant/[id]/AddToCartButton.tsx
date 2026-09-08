@@ -4,6 +4,7 @@
 import { message } from "antd";
 import { addToCart } from "./actions";
 import { useState } from "react";
+import { useCartStore } from "@/app/store/cartStore";
 
 interface AddToCartButtonProps {
   dishId: string;
@@ -12,11 +13,16 @@ interface AddToCartButtonProps {
 export default function AddToCartButton({ dishId }: AddToCartButtonProps) {
   const [messageApi, contextHolder] = message.useMessage();
   const [isLoading, setIsLoading] = useState(false);
+  const fetchCart = useCartStore((state) => state.fetchCart);
 
   const handleAddToCart = async () => {
     try {
       setIsLoading(true);
+      
       await addToCart(dishId);
+      
+      await fetchCart();
+
       messageApi.success("🎉 Successfully added to cart!");
     } catch (error) {
       console.error(error);

@@ -4,9 +4,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { message } from "antd";
 
 export default function RegisterRestaurantPage() {
   const router = useRouter();
+  const [messageApi, contextHolder] = message.useMessage();
   const [name, setName] = useState("");
   const [houseNumber, setHouseNumber] = useState("");
   const [street, setStreet] = useState("");
@@ -18,7 +20,7 @@ export default function RegisterRestaurantPage() {
     e.preventDefault();
 
     if (!name || !street || !province) {
-      alert("Please fill in all required fields!");
+      messageApi.warning("Please fill in all required fields!");
       return;
     }
 
@@ -40,15 +42,17 @@ export default function RegisterRestaurantPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("🎉 Restaurant registered successfully!");
-        router.push("/restaurant/dashboard");
-        router.refresh();
+        messageApi.success("🎉 Restaurant registered successfully!");
+        setTimeout(() => {
+          router.push("/restaurant/dashboard");
+          router.refresh();
+        }, 500);
       } else {
-        alert(`Error: ${data.message}`);
+        messageApi.error(`Error: ${data.message}`);
       }
     } catch (error) {
       console.error("Connection error:", error);
-      alert("Cannot connect to the server.");
+      messageApi.error("Cannot connect to the server.");
     } finally {
       setIsSubmitting(false);
     }
@@ -56,6 +60,7 @@ export default function RegisterRestaurantPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-6">
+      {contextHolder}{" "}
       <div className="max-w-xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <div>

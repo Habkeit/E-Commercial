@@ -4,9 +4,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { message } from "antd";
 
 export default function AddDishPage() {
   const router = useRouter();
+  const [messageApi, contextHolder] = message.useMessage();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
@@ -16,7 +18,7 @@ export default function AddDishPage() {
     e.preventDefault();
 
     if (!name || !price) {
-      alert("Please fill in both dish name and price!");
+      messageApi.warning("Please fill in both dish name and price!");
       return;
     }
 
@@ -36,15 +38,17 @@ export default function AddDishPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("🎉 Dish added successfully!");
-        router.push("/restaurant/dashboard");
-        router.refresh();
+        messageApi.success("🎉 Dish added successfully!");
+        setTimeout(() => {
+          router.push("/restaurant/dashboard");
+          router.refresh();
+        }, 500);
       } else {
-        alert(`Error: ${data.message}`);
+        messageApi.error(`Error: ${data.message}`);
       }
     } catch (error) {
       console.error("Connection error:", error);
-      alert("Cannot connect to the server.");
+      messageApi.error("Cannot connect to the server.");
     } finally {
       setIsSubmitting(false);
     }
@@ -52,6 +56,7 @@ export default function AddDishPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-6">
+      {contextHolder}{" "}
       <div className="max-w-xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-950">🍽️ Add New Dish</h1>
