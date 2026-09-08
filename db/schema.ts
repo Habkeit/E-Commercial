@@ -1,17 +1,18 @@
+// db/schema.ts
 import {
   pgTable,
-  varchar,
-  decimal,
+  uuid,
   text,
-  pgEnum,
+  varchar,
   timestamp,
   integer,
-  uuid,
+  decimal,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+// --- ENUMS ---
 export const actStateEnum = pgEnum("act_state", ["online", "offline"]);
-
 export const orderStatusEnum = pgEnum("order_status", [
   "Pending",
   "Confirmed",
@@ -20,23 +21,19 @@ export const orderStatusEnum = pgEnum("order_status", [
   "Canceled",
 ]);
 
-
+// --- TABLES ---
 export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: uuid("id").primaryKey(),
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull(),
   fullName: text("full_name"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
-
 
 export const restaurants = pgTable("restaurants", {
   id: uuid("id").primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .unique()
-    .references(() => users.id),
+  userId: uuid("user_id").notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   houseNumber: varchar("house_number", { length: 50 }).notNull(),
   street: varchar("street", { length: 100 }).notNull(),
@@ -46,98 +43,90 @@ export const restaurants = pgTable("restaurants", {
   note: text("note"),
   openTime: timestamp("open_time").notNull(),
   closeTime: timestamp("close_time").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const categories = pgTable("categories", {
+  id: uuid("id").primaryKey(),
+  restaurantId: uuid("restaurant_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const dishes = pgTable("dishes", {
   id: uuid("id").primaryKey(),
-  restaurantId: uuid("restaurant_id")
-    .notNull()
-    .references(() => restaurants.id),
-  categoryId: uuid("category_id")
-    .notNull()
-    .references(() => categories.id, { onDelete: "cascade" }),
+  restaurantId: uuid("restaurant_id").notNull(),
+  categoryId: uuid("category_id").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   price: decimal("price", { precision: 15, scale: 2 }).notNull(),
   description: text("description"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey(),
-  user_id: uuid("user_id")
-    .notNull()
-    .references(() => users.id),
+  userId: uuid("user_id").notNull(),
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   deliveryAddress: text("delivery_address").notNull(),
-  // phoneNumber: varchar("phone_number", { length: 15 }).notNull(),
-  status: orderStatusEnum("status").default("Pending").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  status: orderStatusEnum("status").notNull().default("Pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const orderItems = pgTable("order_items", {
   id: uuid("id").primaryKey(),
-  orderId: uuid("order_id")
-    .notNull()
-    .references(() => orders.id),
-  dishId: uuid("dish_id")
-    .notNull()
-    .references(() => dishes.id),
+  orderId: uuid("order_id").notNull(),
+  dishId: uuid("dish_id").notNull(),
   quantity: integer("quantity").notNull(),
   price: decimal("price", { precision: 15, scale: 2 }).notNull(),
   note: text("note"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
-
 
 export const cartItems = pgTable("cart_items", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  dishId: uuid("dish_id")
-    .notNull()
-    .references(() => dishes.id, { onDelete: "cascade" }),
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull(),
+  dishId: uuid("dish_id").notNull(),
   quantity: integer("quantity").notNull(),
   note: text("note"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const categories = pgTable("categories", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull().unique(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-
-export const cartItemRelations = relations(cartItems, ({ one }) => ({
-  user: one(users, {
-    fields: [cartItems.userId],
-    references: [users.id],
+// --- RELATIONS ---
+export const usersRelations = relations(users, ({ one, many }) => ({
+  restaurant: one(restaurants, {
+    fields: [users.id],
+    references: [restaurants.userId],
   }),
-  dish: one(dishes, {
-    fields: [cartItems.dishId],
-    references: [dishes.id],
-  }),
+  orders: many(orders),
+  cartItems: many(cartItems),
 }));
 
-
-export const restaurantRelations = relations(restaurants, ({ one, many }) => ({
+export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   user: one(users, {
     fields: [restaurants.userId],
     references: [users.id],
   }),
+  categories: many(categories),
   dishes: many(dishes),
 }));
 
-export const dishRelations = relations(dishes, ({ one }) => ({
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  restaurant: one(restaurants, {
+    fields: [categories.restaurantId],
+    references: [restaurants.id],
+  }),
+  dishes: many(dishes),
+}));
+
+export const dishesRelations = relations(dishes, ({ one, many }) => ({
   restaurant: one(restaurants, {
     fields: [dishes.restaurantId],
     references: [restaurants.id],
@@ -146,27 +135,36 @@ export const dishRelations = relations(dishes, ({ one }) => ({
     fields: [dishes.categoryId],
     references: [categories.id],
   }),
+  orderItems: many(orderItems),
+  cartItems: many(cartItems),
 }));
 
-export const categoryRelations = relations(categories, ({ many }) => ({
-  dishes: many(dishes),
-}));
-
-export const orderRelations = relations(orders, ({ one, many }) => ({
+export const ordersRelations = relations(orders, ({ one, many }) => ({
   user: one(users, {
-    fields: [orders.user_id],
+    fields: [orders.userId],
     references: [users.id],
   }),
-  items: many(orderItems),
+  orderItems: many(orderItems),
 }));
 
-export const orderItemRelations = relations(orderItems, ({ one }) => ({
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, {
     fields: [orderItems.orderId],
     references: [orders.id],
   }),
   dish: one(dishes, {
     fields: [orderItems.dishId],
+    references: [dishes.id],
+  }),
+}));
+
+export const cartItemsRelations = relations(cartItems, ({ one }) => ({
+  user: one(users, {
+    fields: [cartItems.userId],
+    references: [users.id],
+  }),
+  dish: one(dishes, {
+    fields: [cartItems.dishId],
     references: [dishes.id],
   }),
 }));

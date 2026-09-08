@@ -7,7 +7,7 @@ import Link from "next/link";
 export default function Navbar() {
   return (
     <header className="flex justify-between items-center px-8 py-4 bg-white border-b border-gray-100">
-      <Link href="/foods" className="text-xl font-extrabold text-rose-600">
+      <Link href="/" className="text-xl font-extrabold text-rose-600">
         🍔 FoodDelivery
       </Link>
 

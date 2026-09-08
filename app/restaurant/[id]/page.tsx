@@ -1,9 +1,9 @@
-// app/restaurant/[id]/page.tsx
+// app/restaurants/[id]/page.tsx
 import { db } from "@/db";
-import Link from "next/link";
 import { restaurants, dishes, categories } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { addToCart } from "./actions";
 
 interface PageProps {
@@ -13,6 +13,7 @@ interface PageProps {
 export default async function RestaurantDetailPage({ params }: PageProps) {
   const { id } = await params;
 
+  // 1. Lấy thông tin nhà hàng
   const [restaurant] = await db
     .select()
     .from(restaurants)
@@ -22,99 +23,128 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  // 2. Lấy danh mục của riêng nhà hàng này, sắp xếp theo sortOrder
+  const restaurantCategories = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.restaurantId, id))
+    .orderBy(asc(categories.sortOrder));
+
+  // 3. Lấy toàn bộ món ăn thuộc nhà hàng này
   const restaurantDishes = await db
-    .select({
-      id: dishes.id,
-      name: dishes.name,
-      price: dishes.price,
-      description: dishes.description,
-      categoryName: categories.name,
-    })
+    .select()
     .from(dishes)
-    .innerJoin(categories, eq(dishes.categoryId, categories.id))
     .where(eq(dishes.restaurantId, id));
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12 px-6">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <main className="min-h-screen bg-gray-50 py-10 px-6">
+      <div className="max-w-5xl mx-auto space-y-8">
+        {/* Thanh điều hướng */}
         <div className="flex justify-between items-center">
           <Link
             href="/foods"
-            className="text-rose-500 font-medium hover:underline"
+            className="text-rose-600 font-medium hover:underline flex items-center gap-1"
           >
-            ← Back to Restaurant List
+            ← Back to Restaurants
           </Link>
-          <Link
-            href="/orders"
-            className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-all"
-          >
-            📦 View Orders
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/cart"
+              className="px-4 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl hover:bg-rose-700 transition-all shadow-sm flex items-center gap-2"
+            >
+              <span>🛒</span> View Cart
+            </Link>
+            <Link
+              href="/orders"
+              className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-all shadow-sm"
+            >
+              📦 My Orders
+            </Link>
+          </div>
         </div>
 
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-2">
+
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-3">
           <h1 className="text-3xl font-extrabold text-gray-900">
             {restaurant.name}
           </h1>
-          <p className="text-gray-600">
-            📍 {restaurant.houseNumber} {restaurant.street}, {restaurant.ward},{" "}
-            {restaurant.province}
+          <p className="text-gray-600 flex items-center gap-2">
+            <span>📍</span> {restaurant.houseNumber} {restaurant.street},{" "}
+            {restaurant.ward}, {restaurant.province}
           </p>
           {restaurant.note && (
-            <p className="text-rose-600 font-medium text-sm bg-rose-50 inline-block px-3 py-1 rounded-full">
+            <div className="inline-block bg-rose-50 text-rose-600 text-sm font-medium px-3 py-1 rounded-full">
               💡 {restaurant.note}
-            </p>
+            </div>
           )}
         </div>
 
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-gray-800">🍽️ Menu</h2>
 
-          {restaurantDishes.length === 0 ? (
-            <p className="text-gray-500 bg-white p-6 rounded-xl border border-gray-100 text-center">
-              Not found any dishes for this restaurant.
+        <div className="space-y-10">
+          {restaurantCategories.length === 0 ? (
+            <p className="text-center text-gray-500 bg-white p-8 rounded-2xl border border-gray-100">
+              This restaurant has no categories or dishes available at the moment. Please check back later!
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {restaurantDishes.map((dish) => (
-                <div
-                  key={dish.id}
-                  className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between gap-4 hover:shadow-md transition-shadow"
-                >
-                  <div>
-                    <span className="text-xs font-semibold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
-                      {dish.categoryName}
-                    </span>
-                    <h3 className="text-lg font-bold text-gray-900 mt-2">
-                      {dish.name}
-                    </h3>
-                    <p className="text-gray-500 text-sm mt-1">
-                      {dish.description || "No description available"}
-                    </p>
+            restaurantCategories.map((category) => {
+              const dishesInCategory = restaurantDishes.filter(
+                (dish) => dish.categoryId === category.id,
+              );
+
+              if (dishesInCategory.length === 0) return null;
+
+              return (
+                <div key={category.id} className="space-y-4">
+                  <div className="border-b border-gray-200 pb-2">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      {category.name}
+                    </h2>
+                    {category.description && (
+                      <p className="text-sm text-gray-500">
+                        {category.description}
+                      </p>
+                    )}
                   </div>
 
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-50">
-                    <span className="text-rose-600 font-extrabold text-lg">
-                      {Number(dish.price).toLocaleString()} VND
-                    </span>
-
-                    <form
-                      action={async () => {
-                        "use server";
-                        await addToCart(dish.id);
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {dishesInCategory.map((dish) => (
+                      <div
+                        key={dish.id}
+                        className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between gap-4 hover:shadow-md transition-shadow"
                       >
-                        Insert to Cart 🛒
-                      </button>
-                    </form>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">
+                            {dish.name}
+                          </h3>
+                          <p className="text-gray-500 text-sm mt-1 line-clamp-2">
+                            {dish.description || "Không có mô tả chi tiết."}
+                          </p>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-50">
+                          <span className="text-rose-600 font-extrabold text-lg">
+                            {Number(dish.price).toLocaleString()} VND
+                          </span>
+
+                          <form
+                            action={async () => {
+                              "use server";
+                              await addToCart(dish.id);
+                            }}
+                          >
+                            <button
+                              type="submit"
+                              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
+                            >
+                              Add to Cart
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })
           )}
         </div>
       </div>

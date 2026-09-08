@@ -25,11 +25,10 @@ export default async function OrdersPage() {
   if (existingUsers.length > 0) {
     const currentUser = existingUsers[0];
 
-    
     myOrders = await db
       .select()
       .from(orders)
-      .where(eq(orders.user_id, currentUser.id))
+      .where(eq(orders.userId, currentUser.id))
       .orderBy(desc(orders.createdAt));
   }
 

@@ -1,76 +1,127 @@
-// /app/cart/page.tsx
-"use client";
-
-import { useState } from "react";
-import { useCartStore } from "@/app/store/cartStore";
+// app/cart/page.tsx
+import { db } from "@/db";
+import { cartItems, dishes, users, orders, orderItems } from "@/db/schema";
+import { auth, currentUser as getClerkUser } from "@clerk/nextjs/server";
+import { eq } from "drizzle-orm";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
+import { uuidv7 } from "uuidv7";
+import { revalidatePath } from "next/cache";
 
-export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, clearCart } = useCartStore();
-  const router = useRouter();
+export default async function CartPage() {
+  const { userId: clerkId } = await auth();
 
-  // State for managing order information
-  const [address, setAddress] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  if (!clerkId) {
+    redirect("/sign-in");
+  }
 
-  const totalAmount = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
+  // 1. Lấy thông tin user hiện tại từ DB (tự động đồng bộ nếu chưa có)
+  let [currentUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkId, clerkId));
+
+  if (!currentUser) {
+    const clerkUser = await getClerkUser();
+    const email =
+      clerkUser?.emailAddresses[0]?.emailAddress || "no-email@gmail.com";
+    const fullName =
+      `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
+      "User";
+
+    const newUserId = uuidv7();
+    await db.insert(users).values({
+      id: newUserId,
+      clerkId: clerkId,
+      email: email,
+      fullName: fullName,
+    });
+
+    [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkId, clerkId));
+  }
+
+  // 2. Lấy danh sách sản phẩm trong giỏ hàng từ cơ sở dữ liệu
+  const items = await db
+    .select({
+      cartId: cartItems.id,
+      quantity: cartItems.quantity,
+      note: cartItems.note,
+      dishId: dishes.id,
+      dishName: dishes.name,
+      dishPrice: dishes.price,
+    })
+    .from(cartItems)
+    .innerJoin(dishes, eq(cartItems.dishId, dishes.id))
+    .where(eq(cartItems.userId, currentUser.id));
+
+  const totalAmount = items.reduce(
+    (sum, item) => sum + Number(item.dishPrice) * item.quantity,
     0,
   );
 
-  const handleCheckout = async () => {
-    if (!address || !phoneNumber) {
-      alert("Please fill in both Delivery Address and Phone Number!");
-      return;
+  // Server Action xử lý đặt hàng ngay trong trang
+  async function handleCheckout(formData: FormData) {
+    "use server";
+
+    const phoneNumber = formData.get("phoneNumber") as string;
+    const address = formData.get("address") as string;
+
+    if (!phoneNumber || !address) {
+      throw new Error("Please fill in both Delivery Address and Phone Number!");
     }
 
-    setIsSubmitting(true);
+    if (items.length === 0) {
+      throw new Error("Cart is empty!");
+    }
 
-    try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cart: cart,
-          deliveryAddress: address,
-          phoneNumber: phoneNumber,
-        }),
+    const newOrderId = uuidv7();
+
+    // 1. Tạo đơn hàng mới
+    await db.insert(orders).values({
+      id: newOrderId,
+      userId: currentUser.id,
+      totalAmount: totalAmount.toString(),
+      deliveryAddress: `${address} - Phone: ${phoneNumber}`,
+      status: "Pending",
+    });
+
+    // 2. Chuyển các món từ giỏ hàng sang order_items
+    for (const item of items) {
+      await db.insert(orderItems).values({
+        id: uuidv7(),
+        orderId: newOrderId,
+        dishId: item.dishId,
+        quantity: item.quantity,
+        price: item.dishPrice,
+        note: item.note,
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert(
-          `🎉 Order placed successfully! Your Order ID is: ${data.orderId}`,
-        );
-        clearCart(); // Clear the cart after successful order
-        router.push("/orders"); // Redirect to orders page
-      } else {
-        alert(`Error: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Connection error:", error);
-      alert("Cannot connect to the server.");
-    } finally {
-      setIsSubmitting(false);
     }
-  };
 
-  if (cart.length === 0) {
+    // 3. Xóa sạch giỏ hàng của user sau khi đặt thành công
+    await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
+
+    revalidatePath("/cart");
+    revalidatePath("/orders");
+    redirect("/orders");
+  }
+
+  if (items.length === 0) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <div className="text-center">
+        <div className="text-center bg-white p-10 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             🛒 Your cart is empty
           </h2>
-          <p className="text-gray-500 mb-6">
-            Take a look at our menu and choose your favorite dishes!
+          <p className="text-gray-500 mb-6 text-sm">
+            Take a look at our partner restaurants and choose your favorite
+            dishes!
           </p>
           <Link
             href="/foods"
-            className="bg-rose-500 hover:bg-rose-600 text-white font-medium px-6 py-3 rounded-xl transition-colors"
+            className="inline-block bg-rose-500 hover:bg-rose-600 text-white font-medium px-6 py-3 rounded-xl transition-colors"
           >
             Explore Menu Now
           </Link>
@@ -83,130 +134,92 @@ export default function CartPage() {
     <main className="min-h-screen bg-gray-50 py-12 px-6">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cart Items Section */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">
             🛒 Shopping Cart
           </h1>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-6">
             <div className="divide-y divide-gray-100">
-              {cart.map((item) => (
+              {items.map((item) => (
                 <div
-                  key={item.dishId}
+                  key={item.cartId}
                   className="py-4 flex justify-between items-center gap-4"
                 >
                   <div>
                     <h3 className="text-lg font-bold text-gray-900">
-                      {item.name}
+                      {item.dishName}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      Restaurant: {item.restaurantName || "N/A"}
-                    </p>
-                    {item.note && (
-                      <p className="text-xs text-amber-600 mt-0.5">
-                        Note: {item.note}
-                      </p>
-                    )}
                     <p className="text-rose-600 font-semibold mt-1">
-                      {item.price.toLocaleString("en-US")} VND
+                      {Number(item.dishPrice).toLocaleString("en-US")} VND
                     </p>
                   </div>
 
                   <div className="flex items-center space-x-4">
-                    {/* Quantity Modifier Buttons */}
-                    <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
-                      <button
-                        onClick={() =>
-                          updateQuantity(item.dishId, item.quantity - 1)
-                        }
-                        className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm"
-                      >
-                        -
-                      </button>
-                      <span className="px-3 py-1 text-center font-medium text-sm w-10">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() =>
-                          updateQuantity(item.dishId, item.quantity + 1)
-                        }
-                        className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm"
-                      >
-                        +
-                      </button>
-                    </div>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm">
+                      Qty: {item.quantity}
+                    </span>
 
                     <div className="text-right min-w-[90px]">
                       <span className="font-bold text-gray-900 block mb-1">
-                        {(item.price * item.quantity).toLocaleString("en-US")}{" "}
+                        {(
+                          Number(item.dishPrice) * item.quantity
+                        ).toLocaleString("en-US")}{" "}
                         VND
                       </span>
-                      <button
-                        onClick={() => removeFromCart(item.dishId)}
-                        className="text-red-500 hover:text-red-700 text-xs font-medium"
-                      >
-                        Remove
-                      </button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100 text-right">
-              <button
-                onClick={clearCart}
-                className="text-gray-400 hover:text-gray-600 text-sm"
-              >
-                Clear All
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Delivery Info & Checkout Section */}
+        {/* Delivery Info & Checkout Form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-fit space-y-6">
           <h2 className="text-xl font-bold text-gray-900 border-b pb-4">
             Delivery Information
           </h2>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contact Phone Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="e.g., 0987654321"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
-            />
-          </div>
+          <form action={handleCheckout} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Contact Phone Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="phoneNumber"
+                required
+                placeholder="e.g., 0987654321"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Delivery Address <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter house number, street name, ward/district..."
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-24 resize-none text-gray-800 placeholder-gray-400"
-            ></textarea>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Delivery Address <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="address"
+                required
+                placeholder="Enter house number, street name, ward/district..."
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-24 resize-none text-gray-800 placeholder-gray-400"
+              ></textarea>
+            </div>
 
-          <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-            <span className="text-gray-500">Total Payment:</span>
-            <span className="text-2xl font-extrabold text-rose-600">
-              {totalAmount.toLocaleString("en-US")} VND
-            </span>
-          </div>
+            <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
+              <span className="text-gray-500">Total Payment:</span>
+              <span className="text-2xl font-extrabold text-rose-600">
+                {totalAmount.toLocaleString("en-US")} VND
+              </span>
+            </div>
 
-          <button
-            onClick={handleCheckout}
-            disabled={isSubmitting}
-            className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-rose-500 hover:bg-rose-600"}`}
-          >
-            {isSubmitting ? "Processing..." : "Confirm Order 🚀"}
-          </button>
+            <button
+              type="submit"
+              className="w-full bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20"
+            >
+              Confirm Order 🚀
+            </button>
+          </form>
         </div>
       </div>
     </main>
