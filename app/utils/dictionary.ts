@@ -1,7 +1,10 @@
 // app/utils/dictionary.ts
 export const dict = {
   en: {
+    intro_title: "Welcome to our food delivery app!",
+    intro: "Welcome to our food delivery app! Explore a wide variety of restaurants and dishes, place your order, and enjoy delicious meals delivered right to your doorstep.",
     cart: "Cart",
+    viewCart: "View Cart",
     orders: "Orders",
     signIn: "Sign In",
     emptyCart: "Your cart is empty",
@@ -22,6 +25,7 @@ export const dict = {
     restaurantRegister: "Register Restaurant",
     address: "Address",
     addNewDish: "+ Add New Dish",
+    addCategory: "+ Add New Category",
     restaurantOrders: "Restaurant Orders",
     menuManagement: "Menu Management",
     dishesCount: "dishes",
@@ -73,7 +77,10 @@ export const dict = {
     dishDescLabel: "Description",
   },
   vi: {
+    intro_title: "Chào mừng bạn đến với ứng dụng giao đồ ăn của chúng tôi!",
+    intro: "Chào mừng bạn đến với ứng dụng giao đồ ăn của chúng tôi! Khám phá nhiều nhà hàng và món ăn đa dạng, đặt món và thưởng thức những bữa ăn ngon được giao tận nơi.",
     cart: "Giỏ hàng",
+    viewCart: "Xem Giỏ Hàng",
     orders: "Đơn hàng",
     signIn: "Đăng nhập",
     emptyCart: "Giỏ hàng của bạn đang trống",
@@ -94,6 +101,7 @@ export const dict = {
     restaurantRegister: "Đăng Ký Nhà Hàng",
     address: "Địa chỉ",
     addNewDish: "+ Thêm món mới",
+    addCategory: "+ Thêm danh mục mới",
     restaurantOrders: "Đơn hàng của quán",
     menuManagement: "Quản lý Thực đơn",
     dishesCount: "món",

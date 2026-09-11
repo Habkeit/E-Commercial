@@ -1,6 +1,6 @@
 // app/restaurant/dashboard/page.tsx
 import { db } from "@/db";
-import { users, restaurants, dishes } from "@/db/schema";
+import { users, restaurants, dishes, categories } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -65,6 +65,11 @@ export default async function RestaurantDashboard({
 
   const restaurant = myRestaurants[0];
 
+  const allCategories = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.restaurantId, restaurant.id));
+
   async function updateRestaurantInfo(formData: FormData) {
     "use server";
 
@@ -103,22 +108,33 @@ export default async function RestaurantDashboard({
     const dishId = formData.get("dishId") as string;
     const name = formData.get("name") as string;
     const priceStr = formData.get("price") as string;
+    const categoryId = formData.get("categoryId") as string;
+    const stockStr = formData.get("stock") as string;
     const description = formData.get("description") as string;
 
-    if (!dishId || !name || !priceStr) {
+    if (!dishId || !name || !priceStr || !categoryId || stockStr === null) {
       throw new Error("Missing required fields");
     }
 
     const priceNum = Number(priceStr);
+    const stockNum = Number(stockStr);
+
     if (isNaN(priceNum) || priceNum < 0 || !Number.isInteger(priceNum)) {
       throw new Error("Invalid price. VND must be a positive integer.");
     }
+    if (isNaN(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
+      throw new Error("Invalid stock quantity.");
+    }
 
+    // Cập nhật món ăn kèm theo số lượng và tự động bật/tắt trạng thái đang bán
     await db
       .update(dishes)
       .set({
         name,
         price: priceStr,
+        categoryId,
+        stock: stockNum,
+        isActive: stockNum > 0, // Nếu stock = 0 thì tự chuyển thành hết hàng (isActive = false)
         description: description || null,
       })
       .where(eq(dishes.id, dishId));
@@ -175,6 +191,14 @@ export default async function RestaurantDashboard({
             >
               {t.addNewDish}
             </Link>
+
+            <Link
+              href="/restaurant/categories/new"
+              className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-indigo-500/20"
+            >
+              📑 {t.addCategory}
+            </Link>
+
             <Link
               href="/restaurant/orders"
               className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-orange-500/20"
@@ -353,6 +377,43 @@ export default async function RestaurantDashboard({
 
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1">
+                            Stock Quantity{" "}
+                            <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            name="stock"
+                            defaultValue={dish.stock ?? 0}
+                            min="0"
+                            step="1"
+                            required
+                            className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">
+                            Category <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            name="categoryId"
+                            defaultValue={dish.categoryId || ""}
+                            required
+                            className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
+                          >
+                            <option value="" disabled>
+                              Select a category
+                            </option>
+                            {allCategories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">
                             {t.dishDescLabel}
                           </label>
                           <textarea
@@ -381,6 +442,8 @@ export default async function RestaurantDashboard({
                     </div>
                   );
                 }
+
+                const isOutOfStock = (dish.stock ?? 0) <= 0 || !dish.isActive;
 
                 return (
                   <div
@@ -426,9 +489,24 @@ export default async function RestaurantDashboard({
                       <span className="font-extrabold text-rose-600">
                         {Number(dish.price).toLocaleString("en-US")} VND
                       </span>
-                      <span className="text-xs bg-emerald-100 text-emerald-700 font-medium px-2.5 py-1 rounded-lg">
-                        {t.activeStatus}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded-md">
+                          Stock: {dish.stock ?? 0}
+                        </span>
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-lg ${
+                            isOutOfStock
+                              ? "bg-red-100 text-red-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {isOutOfStock
+                            ? currentLang === "vi"
+                              ? "Hết hàng"
+                              : "Out of stock"
+                            : t.activeStatus}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );

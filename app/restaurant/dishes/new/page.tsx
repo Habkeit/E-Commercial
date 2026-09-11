@@ -1,24 +1,54 @@
 // app/restaurant/dishes/new/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { message } from "antd";
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 export default function AddDishPage() {
   const router = useRouter();
   const [messageApi, contextHolder] = message.useMessage();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 👈 Tự động gọi API lấy danh sách Category khi vào trang
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch("/api/restaurant/categories");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success) {
+          setCategories(data.categories);
+        }
+      } catch (error) {
+        console.error("Failed to load categories", error);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !price) {
-      messageApi.warning("Please fill in both dish name and price!");
+    if (!name || !price || !categoryId) {
+      messageApi.warning("Please fill in dish name, price, and category!");
+      return;
+    }
+
+    const priceNum = Number(price);
+    if (isNaN(priceNum) || priceNum < 0 || !Number.isInteger(priceNum)) {
+      messageApi.warning("Invalid price. VND must be a positive integer.");
       return;
     }
 
@@ -30,7 +60,8 @@ export default function AddDishPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          price: parseFloat(price),
+          price: priceNum,
+          categoryId,
           description,
         }),
       });
@@ -56,7 +87,7 @@ export default function AddDishPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-6">
-      {contextHolder}{" "}
+      {contextHolder}
       <div className="max-w-xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-950">🍽️ Add New Dish</h1>
@@ -81,6 +112,7 @@ export default function AddDishPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Special Broken Rice"
+              required
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
             />
           </div>
@@ -94,8 +126,32 @@ export default function AddDishPage() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="e.g., 50000"
+              min="0"
+              step="1"
+              required
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              required
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900 bg-white"
+            >
+              <option value="" disabled>
+                Select a category
+              </option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -113,7 +169,7 @@ export default function AddDishPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 ${
+            className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 cursor-pointer ${
               isSubmitting
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-rose-500 hover:bg-rose-600"

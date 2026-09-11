@@ -1,7 +1,7 @@
 // app/restaurant/[id]/page.tsx
 import { db } from "@/db";
 import { restaurants, dishes, categories } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and, gt } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import AddToCartButton from "./AddToCartButton";
@@ -31,7 +31,13 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
   const restaurantDishes = await db
     .select()
     .from(dishes)
-    .where(eq(dishes.restaurantId, id));
+    .where(
+      and(
+        eq(dishes.restaurantId, id),
+        eq(dishes.isActive, true),
+        gt(dishes.stock, 0),
+      ),
+    );
 
   return (
     <main className="min-h-screen bg-gray-50 py-10 px-6">
