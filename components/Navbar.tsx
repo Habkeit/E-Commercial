@@ -44,7 +44,7 @@ export default function Navbar() {
           onClick={handleToggleLanguage}
           className="px-3 py-1.5 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
         >
-          {lang === "en" ? "🇻🇳 VI" : "🇬🇧 EN"}
+          {lang === "en" ? "🇻🇳 VI" : "en EN"}
         </button>
 
         <Link
