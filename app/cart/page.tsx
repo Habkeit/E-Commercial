@@ -9,6 +9,7 @@ import { uuidv7 } from "uuidv7";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { dict } from "@/app/utils/dictionary";
+import CheckoutForm from "./CheckoutForm";
 
 export default async function CartPage() {
   const { userId: clerkId } = await auth();
@@ -73,7 +74,7 @@ export default async function CartPage() {
     "use server";
 
     const cartId = formData.get("cartId") as string;
-    const action = formData.get("action") as string; // "increase", "decrease", hoặc "remove"
+    const action = formData.get("action") as string;
 
     const [item] = await db
       .select()
@@ -96,7 +97,6 @@ export default async function CartPage() {
           .set({ quantity: item.quantity - 1 })
           .where(eq(cartItems.id, cartId));
       } else {
-        // Nếu số lượng là 1 mà bấm giảm nữa -> Xóa luôn
         await db.delete(cartItems).where(eq(cartItems.id, cartId));
       }
     }
@@ -111,11 +111,35 @@ export default async function CartPage() {
     const address = formData.get("address") as string;
 
     if (!phoneNumber || !address) {
-      throw new Error("Please fill in both Delivery Address and Phone Number!");
+      return {
+        success: false,
+        message: "Vui lòng điền đủ Số điện thoại và Địa chỉ!",
+      };
     }
 
     if (items.length === 0) {
-      throw new Error("Cart is empty!");
+      return { success: false, message: "Giỏ hàng đang trống!" };
+    }
+
+    for (const item of items) {
+      const [currentDish] = await db
+        .select()
+        .from(dishes)
+        .where(eq(dishes.id, item.dishId));
+
+      if (!currentDish) {
+        return {
+          success: false,
+          message: `Món "${item.dishName}" không còn tồn tại trên hệ thống.`,
+        };
+      }
+
+      if (currentDish.stock < item.quantity) {
+        return {
+          success: false,
+          message: `Rất tiếc! Món "${item.dishName}" chỉ còn ${currentDish.stock} phần. Vui lòng giảm số lượng.`,
+        };
+      }
     }
 
     const newOrderId = uuidv7();
@@ -137,12 +161,24 @@ export default async function CartPage() {
         price: item.dishPrice,
         note: item.note,
       });
+
+      const [dishToUpdate] = await db
+        .select()
+        .from(dishes)
+        .where(eq(dishes.id, item.dishId));
+      const newStock = dishToUpdate.stock - item.quantity;
+      await db
+        .update(dishes)
+        .set({ stock: newStock, isActive: newStock > 0 })
+        .where(eq(dishes.id, item.dishId));
     }
 
     await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
 
     revalidatePath("/cart");
     revalidatePath("/orders");
+    revalidatePath("/restaurant/[id]", "page");
+
     redirect("/orders");
   }
 
@@ -247,53 +283,18 @@ export default async function CartPage() {
           </div>
         </div>
 
+        {/* Delivery Info & Checkout Form Component */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-fit space-y-6">
           <h2 className="text-xl font-bold text-gray-900 border-b pb-4">
             {t.deliveryInfo}
           </h2>
 
-          <form action={handleCheckout} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.phone} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="phoneNumber"
-                required
-                defaultValue={defaultPhone}
-                placeholder="e.g., 0987654321"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
-              />
-              <p className="text-xs text-gray-500 mt-1">{t.phoneNote}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.DeliveryAddress} <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="address"
-                required
-                placeholder={t.addressPlaceholder}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-24 resize-none text-gray-800 placeholder-gray-400"
-              ></textarea>
-            </div>
-
-            <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-              <span className="text-gray-500">{t.totalPayment}:</span>
-              <span className="text-2xl font-extrabold text-rose-600">
-                {totalAmount.toLocaleString("en-US")} VND
-              </span>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 cursor-pointer"
-            >
-              {t.confirmOrder}
-            </button>
-          </form>
+          <CheckoutForm
+            handleCheckout={handleCheckout}
+            defaultPhone={defaultPhone}
+            totalAmount={totalAmount}
+            t={t}
+          />
         </div>
       </div>
     </main>
