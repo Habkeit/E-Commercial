@@ -77,11 +77,55 @@ export default async function CartPage() {
     const address = formData.get("address") as string;
 
     if (!phoneNumber || !address) {
+<<<<<<< Updated upstream
       throw new Error("Please fill in both Delivery Address and Phone Number!");
     }
 
     if (items.length === 0) {
       throw new Error("Cart is empty!");
+=======
+      return {
+        success: false,
+        message:
+          currentLang === "vi"
+            ? "Vui lòng điền đủ Số điện thoại và Địa chỉ!"
+            : "Please fill in both Phone Number and Address!",
+      };
+    }
+
+    if (items.length === 0) {
+      return {
+        success: false,
+        message: currentLang === "vi" ? "Giỏ hàng đang trống!" : "Your cart is empty!",
+      };
+    }
+
+    for (const item of items) {
+      const [currentDish] = await db
+        .select()
+        .from(dishes)
+        .where(eq(dishes.id, item.dishId));
+
+      if (!currentDish) {
+        return {
+          success: false,
+          message:
+            currentLang === "vi"
+              ? `Món "${item.dishName}" không còn tồn tại trên hệ thống.`
+              : `Dish "${item.dishName}" no longer exists on the system.`,
+        };
+      }
+
+      if (currentDish.stock < item.quantity) {
+        return {
+          success: false,
+          message:
+            currentLang === "vi"
+              ? `Rất tiếc! Món "${item.dishName}" chỉ còn ${currentDish.stock} phần. Vui lòng giảm số lượng.`
+              : `Sorry! Dish "${item.dishName}" only has ${currentDish.stock} left. Please reduce the quantity.`,
+        };
+      }
+>>>>>>> Stashed changes
     }
 
     const newOrderId = uuidv7();
