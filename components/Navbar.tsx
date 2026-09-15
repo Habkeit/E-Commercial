@@ -7,10 +7,11 @@ import { useCartStore } from "@/app/store/cartStore";
 import { useLanguageStore } from "@/app/store/languageStore";
 import { dict } from "@/app/utils/dictionary";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname(); // 👈 Lấy đường dẫn hiện tại
   const cart = useCartStore((state) => state.cart);
   const fetchCart = useCartStore((state) => state.fetchCart);
 
@@ -20,9 +21,28 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchCart();
-  }, [fetchCart]);
+  }, [fetchCart, pathname]);
 
-  
+  useEffect(() => {
+    const handleSyncCart = () => {
+      // Đợi Server Action xử lý Database xong (khoảng nửa giây) rồi gọi fetchCart
+      setTimeout(fetchCart, 500);
+      setTimeout(fetchCart, 1200); // Gọi dự phòng thêm một nhịp cho chắc chắn
+    };
+
+    // Chỉ kích hoạt lắng nghe click nếu người dùng đang ở trang Cart
+    if (pathname === "/cart") {
+      window.addEventListener("click", handleSyncCart);
+    }
+
+    window.addEventListener("focus", fetchCart);
+
+    return () => {
+      window.removeEventListener("click", handleSyncCart);
+      window.removeEventListener("focus", fetchCart);
+    };
+  }, [fetchCart, pathname]);
+
   const handleToggleLanguage = () => {
     const newLang = lang === "en" ? "vi" : "en";
     toggleLang();
