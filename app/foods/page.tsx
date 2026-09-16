@@ -5,6 +5,7 @@ import { restaurants } from "@/db/schema";
 import { ilike } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { dict } from "@/app/utils/dictionary";
+import SearchBox from "./SearchBox";
 
 interface Restaurant {
   id: string;
@@ -40,7 +41,6 @@ export default async function FoodsPage({
 
   const fetchedRestaurants = await getRestaurants(searchQuery);
 
-  
   const cookieStore = await cookies();
   const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
   const t = dict[currentLang as keyof typeof dict];
@@ -53,9 +53,7 @@ export default async function FoodsPage({
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
               🏪 {t.partnerRestaurants}
             </h1>
-            <p className="text-gray-600">
-              {t.selectRestaurantDesc}
-            </p>
+            <p className="text-gray-600">{t.selectRestaurantDesc}</p>
           </div>
           <Link
             href="/orders"
@@ -66,27 +64,14 @@ export default async function FoodsPage({
           </Link>
         </div>
 
-        {/* Search Form */}
-        <form className="mb-8 flex gap-4 max-w-md">
-          <input
-            type="text"
-            name="query"
-            defaultValue={searchQuery}
-            placeholder={t.searchRestaurants}
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400 bg-white"
-          />
-          <button
-            type="submit"
-            className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-          >
-            {t.searchBtn}
-          </button>
-        </form>
+        <SearchBox
+          initialQuery={searchQuery}
+          placeholder={t.searchRestaurants || "Tìm kiếm nhà hàng..."}
+        />
 
         {fetchedRestaurants.length === 0 ? (
           <div className="text-center py-12 text-gray-500 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            {t.noRestaurantsFound} &quot;{searchQuery}&quot;{" "}
-            {/* 👈 Dịch thông báo không tìm thấy */}
+            {t.noRestaurantsFound} &quot;{searchQuery}&quot;
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
