@@ -6,6 +6,7 @@ import {
   varchar,
   timestamp,
   integer,
+  boolean,
   decimal,
   pgEnum,
 } from "drizzle-orm/pg-core";
@@ -64,6 +65,9 @@ export const dishes = pgTable("dishes", {
   name: varchar("name", { length: 255 }).notNull(),
   price: decimal("price", { precision: 15, scale: 2 }).notNull(),
   description: text("description"),
+  stock: integer("stock").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  status: text("status").default("active").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

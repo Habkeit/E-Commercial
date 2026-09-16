@@ -1,10 +1,12 @@
 // app/restaurant/[id]/page.tsx
 import { db } from "@/db";
 import { restaurants, dishes, categories } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import AddToCartButton from "./AddToCartButton";
+import { cookies } from "next/headers";
+import { dict } from "@/app/utils/dictionary";
+import CategoryDishList from "./CategoryDishList"; 
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -31,31 +33,39 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
   const restaurantDishes = await db
     .select()
     .from(dishes)
-    .where(eq(dishes.restaurantId, id));
+    .where(
+      and(
+        eq(dishes.restaurantId, id),
+        or(eq(dishes.status, "active"), eq(dishes.status, "pre_order")),
+      ),
+    );
+
+  const cookieStore = await cookies();
+  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
+  const t = dict[currentLang as keyof typeof dict];
 
   return (
     <main className="min-h-screen bg-gray-50 py-10 px-6">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Thanh điều hướng */}
         <div className="flex justify-between items-center">
           <Link
             href="/foods"
             className="text-rose-600 font-medium hover:underline flex items-center gap-1"
           >
-            ← Back to Restaurants
+            ← {t.backToMenu || "Back to Menu"}
           </Link>
           <div className="flex gap-3">
             <Link
               href="/cart"
               className="px-4 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl hover:bg-rose-700 transition-all shadow-sm flex items-center gap-2"
             >
-              <span>🛒</span> View Cart
+              <span>🛒</span> {t.cart || "Cart"}
             </Link>
             <Link
               href="/orders"
               className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-all shadow-sm"
             >
-              📦 My Orders
+              📦 {t.orders || "Orders"}
             </Link>
           </div>
         </div>
@@ -102,30 +112,8 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {dishesInCategory.map((dish) => (
-                      <div
-                        key={dish.id}
-                        className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between gap-4 hover:shadow-md transition-shadow"
-                      >
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">
-                            {dish.name}
-                          </h3>
-                          <p className="text-gray-500 text-sm mt-1 line-clamp-2">
-                            {dish.description || "Không có mô tả chi tiết."}
-                          </p>
-                        </div>
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-50">
-                          <span className="text-rose-600 font-extrabold text-lg">
-                            {Number(dish.price).toLocaleString()} VND
-                          </span>
-
-                          <AddToCartButton dishId={dish.id} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {/* Truyền riêng danh sách món của danh mục này vào để phân trang độc lập */}
+                  <CategoryDishList dishes={dishesInCategory} />
                 </div>
               );
             })

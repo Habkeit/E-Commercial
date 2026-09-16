@@ -9,28 +9,27 @@ import { cookies } from "next/headers";
 import { dict } from "@/app/utils/dictionary";
 
 const inter = Inter({ subsets: ["latin"] });
-const cookieStore = await cookies();
-const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-const t = dict[currentLang as keyof typeof dict];
 
 export const metadata: Metadata = {
   title: "Food Delivery App",
   description: "Order your favorite food online easily and quickly.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
+  const t = dict[currentLang as keyof typeof dict];
+
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang={currentLang}>
         <body className={inter.className}>
           <Navbar />
-          {/* <SyncCart />
-          <SyncUser /> */}
-          
+
           <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-end gap-4">
             <Link
               href="/restaurant/dashboard"

@@ -9,6 +9,7 @@ import { uuidv7 } from "uuidv7";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { dict } from "@/app/utils/dictionary";
+import CheckoutForm from "./CheckoutForm";
 
 export default async function CartPage() {
   const { userId: clerkId } = await auth();
@@ -50,7 +51,6 @@ export default async function CartPage() {
   const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
   const t = dict[currentLang as keyof typeof dict];
 
-  
   const items = await db
     .select({
       cartId: cartItems.id,
@@ -62,14 +62,48 @@ export default async function CartPage() {
     })
     .from(cartItems)
     .innerJoin(dishes, eq(cartItems.dishId, dishes.id))
-    .where(eq(cartItems.userId, currentUser.id));
+    .where(eq(cartItems.userId, currentUser.id))
+    .orderBy(cartItems.createdAt);
 
   const totalAmount = items.reduce(
     (sum, item) => sum + Number(item.dishPrice) * item.quantity,
     0,
   );
 
-  
+  async function updateItemQuantity(formData: FormData) {
+    "use server";
+
+    const cartId = formData.get("cartId") as string;
+    const action = formData.get("action") as string; // "increase", "decrease", hoặc "remove"
+
+    const [item] = await db
+      .select()
+      .from(cartItems)
+      .where(eq(cartItems.id, cartId));
+
+    if (!item) return;
+
+    if (action === "remove") {
+      await db.delete(cartItems).where(eq(cartItems.id, cartId));
+    } else if (action === "increase") {
+      await db
+        .update(cartItems)
+        .set({ quantity: item.quantity + 1 })
+        .where(eq(cartItems.id, cartId));
+    } else if (action === "decrease") {
+      if (item.quantity > 1) {
+        await db
+          .update(cartItems)
+          .set({ quantity: item.quantity - 1 })
+          .where(eq(cartItems.id, cartId));
+      } else {
+        await db.delete(cartItems).where(eq(cartItems.id, cartId));
+      }
+    }
+
+    revalidatePath("/cart");
+  }
+
   async function handleCheckout(formData: FormData) {
     "use server";
 
@@ -77,13 +111,6 @@ export default async function CartPage() {
     const address = formData.get("address") as string;
 
     if (!phoneNumber || !address) {
-<<<<<<< Updated upstream
-      throw new Error("Please fill in both Delivery Address and Phone Number!");
-    }
-
-    if (items.length === 0) {
-      throw new Error("Cart is empty!");
-=======
       return {
         success: false,
         message:
@@ -96,7 +123,8 @@ export default async function CartPage() {
     if (items.length === 0) {
       return {
         success: false,
-        message: currentLang === "vi" ? "Giỏ hàng đang trống!" : "Your cart is empty!",
+        message:
+          currentLang === "vi" ? "Giỏ hàng đang trống!" : "Your cart is empty!",
       };
     }
 
@@ -125,12 +153,10 @@ export default async function CartPage() {
               : `Sorry! Dish "${item.dishName}" only has ${currentDish.stock} left. Please reduce the quantity.`,
         };
       }
->>>>>>> Stashed changes
     }
 
     const newOrderId = uuidv7();
 
-    // 1. Tạo đơn hàng mới
     await db.insert(orders).values({
       id: newOrderId,
       userId: currentUser.id,
@@ -139,7 +165,6 @@ export default async function CartPage() {
       status: "Pending",
     });
 
-  
     for (const item of items) {
       await db.insert(orderItems).values({
         id: uuidv7(),
@@ -149,13 +174,24 @@ export default async function CartPage() {
         price: item.dishPrice,
         note: item.note,
       });
+
+      const [dishToUpdate] = await db
+        .select()
+        .from(dishes)
+        .where(eq(dishes.id, item.dishId));
+      const newStock = dishToUpdate.stock - item.quantity;
+      await db
+        .update(dishes)
+        .set({ stock: newStock, isActive: newStock > 0 })
+        .where(eq(dishes.id, item.dishId));
     }
 
-    
     await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
 
     revalidatePath("/cart");
     revalidatePath("/orders");
+    revalidatePath("/restaurant/[id]", "page");
+
     redirect("/orders");
   }
 
@@ -166,9 +202,7 @@ export default async function CartPage() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             🛒 {t.emptyCart}
           </h2>
-          <p className="text-gray-500 mb-6 text-sm">
-            {t.emptyCartDesc}
-          </p>
+          <p className="text-gray-500 mb-6 text-sm">{t.emptyCartDesc}</p>
           <Link
             href="/foods"
             className="inline-block bg-rose-500 hover:bg-rose-600 text-white font-medium px-6 py-3 rounded-xl transition-colors"
@@ -193,10 +227,10 @@ export default async function CartPage() {
               {items.map((item) => (
                 <div
                   key={item.cartId}
-                  className="py-4 flex justify-between items-center gap-4"
+                  className="py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"
                 >
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 line-clamp-2">
                       {item.dishName}
                     </h3>
                     <p className="text-rose-600 font-semibold mt-1">
@@ -204,13 +238,51 @@ export default async function CartPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center space-x-4">
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg font-semibold text-sm">
-                      Qty: {item.quantity}
-                    </span>
+                  <div className="flex items-center space-x-3 self-end sm:self-auto">
+                    <form
+                      action={updateItemQuantity}
+                      className="flex items-center bg-gray-100 rounded-lg p-1"
+                    >
+                      <input type="hidden" name="cartId" value={item.cartId} />
 
-                    <div className="text-right min-w-[90px]">
-                      <span className="font-bold text-gray-900 block mb-1">
+                      <button
+                        type="submit"
+                        name="action"
+                        value="decrease"
+                        className="w-8 h-8 flex items-center justify-center bg-white text-gray-600 rounded shadow-sm hover:bg-gray-50 transition-colors font-bold cursor-pointer"
+                      >
+                        -
+                      </button>
+
+                      <span className="w-10 text-center font-semibold text-sm text-gray-900">
+                        {item.quantity}
+                      </span>
+
+                      <button
+                        type="submit"
+                        name="action"
+                        value="increase"
+                        className="w-8 h-8 flex items-center justify-center bg-white text-gray-600 rounded shadow-sm hover:bg-gray-50 transition-colors font-bold cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </form>
+
+                    <form action={updateItemQuantity}>
+                      <input type="hidden" name="cartId" value={item.cartId} />
+                      <button
+                        type="submit"
+                        name="action"
+                        value="remove"
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                        title="Remove item"
+                      >
+                        🗑️
+                      </button>
+                    </form>
+
+                    <div className="text-right min-w-[90px] hidden sm:block">
+                      <span className="font-bold text-gray-900 block">
                         {(
                           Number(item.dishPrice) * item.quantity
                         ).toLocaleString("en-US")}{" "}
@@ -230,50 +302,13 @@ export default async function CartPage() {
             {t.deliveryInfo}
           </h2>
 
-          <form action={handleCheckout} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.phone} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="phoneNumber"
-                required
-                defaultValue={defaultPhone} // 👈 Đã thêm defaultValue tự động điền số điện thoại
-                placeholder="e.g., 0987654321"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {t.phoneNote}
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t.DeliveryAddress} <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="address"
-                required
-                placeholder={t.addressPlaceholder}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-24 resize-none text-gray-800 placeholder-gray-400"
-              ></textarea>
-            </div>
-
-            <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-              <span className="text-gray-500">{t.totalPayment}:</span>
-              <span className="text-2xl font-extrabold text-rose-600">
-                {totalAmount.toLocaleString("en-US")} VND
-              </span>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20"
-            >
-              {t.confirmOrder}
-            </button>
-          </form>
+          {/* Sử dụng CheckoutForm để hiển thị toast message chuẩn xác */}
+          <CheckoutForm
+            handleCheckout={handleCheckout}
+            defaultPhone={defaultPhone}
+            totalAmount={totalAmount}
+            t={t}
+          />
         </div>
       </div>
     </main>
