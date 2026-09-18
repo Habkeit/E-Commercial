@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { cart, deliveryAddress, phoneNumber } = await request.json();
+    const { cart, deliveryAddress } = await request.json();
 
     if (!cart || cart.length === 0) {
       return NextResponse.json(
@@ -61,10 +61,9 @@ export async function POST(request: Request) {
 
     await db.insert(orders).values({
       id: newOrderId,
-      user_id: currentUser.id,
+      userId: currentUser.id,
       totalAmount: totalAmount.toString(),
       deliveryAddress,
-      phoneNumber,
       status: "Pending",
     });
 

@@ -73,8 +73,8 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error registering restaurant:", error);
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
-      { status: 500 },
+      { success: false, message: "Failed to register restaurant" },
+      { status: 400 },
     );
   }
 }

@@ -62,6 +62,7 @@ export async function POST(req: Request) {
 
       if (!existingUser) {
         await db.insert(users).values({
+          id: crypto.randomUUID(),
           clerkId: id,
           email,
           fullName,
