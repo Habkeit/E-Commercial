@@ -26,11 +26,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const { cart, deliveryAddress } = await request.json();
+    // 👇 Bổ sung lấy restaurantId từ request.json()
+    const { cart, deliveryAddress, restaurantId } = await request.json();
 
     if (!cart || cart.length === 0) {
       return NextResponse.json(
         { success: false, message: "Cart is empty" },
+        { status: 400 },
+      );
+    }
+
+    // 👇 Kiểm tra thêm xem có restaurantId không
+    if (!restaurantId) {
+      return NextResponse.json(
+        { success: false, message: "Restaurant ID is missing" },
         { status: 400 },
       );
     }
@@ -62,6 +71,7 @@ export async function POST(request: Request) {
     await db.insert(orders).values({
       id: newOrderId,
       userId: currentUser.id,
+      restaurantId: restaurantId, // 👈 Truyền restaurantId vào đây
       totalAmount: totalAmount.toString(),
       deliveryAddress,
       status: "Pending",

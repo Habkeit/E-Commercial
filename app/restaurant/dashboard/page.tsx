@@ -1,6 +1,6 @@
 // app/restaurant/dashboard/page.tsx
 import { db } from "@/db";
-import { users, restaurants, dishes, categories } from "@/db/schema";
+import { users, restaurants, dishes, categories, orders } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -9,6 +9,7 @@ import { cookies } from "next/headers";
 import { dict } from "@/app/utils/dictionary";
 import { revalidatePath } from "next/cache";
 import DeleteConfirmButton from "@/components/DeleteConfirmButton";
+import DeleteRestaurantModal from "./DeleteRestaurantModal";
 
 export default async function RestaurantDashboard({
   searchParams,
@@ -92,14 +93,37 @@ export default async function RestaurantDashboard({
     redirect("/restaurant/dashboard");
   }
 
-  async function deleteRestaurant() {
+  // 👇 HÀM XÓA QUÁN MỚI ĐÃ THÊM LOGIC VALIDATE
+  async function deleteRestaurantAction() {
     "use server";
 
+    // 1. Kiểm tra đơn hàng
+    const restaurantOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.restaurantId, restaurant.id))
+      .limit(1);
+
+    // 2. Nếu có đơn hàng -> Chặn
+    if (restaurantOrders.length > 0) {
+      return {
+        success: false,
+        message:
+          currentLang === "vi"
+            ? "Không thể xóa nhà hàng vì đã có đơn hàng được tạo."
+            : "Cannot delete restaurant because there are existing orders.",
+      };
+    }
+
+    // 3. Nếu không có đơn hàng -> Xóa toàn bộ
     await db.delete(dishes).where(eq(dishes.restaurantId, restaurant.id));
+    await db
+      .delete(categories)
+      .where(eq(categories.restaurantId, restaurant.id));
     await db.delete(restaurants).where(eq(restaurants.id, restaurant.id));
 
     revalidatePath("/restaurant/dashboard");
-    redirect("/");
+    return { success: true };
   }
 
   async function updateDishInfo(formData: FormData) {
@@ -148,7 +172,7 @@ export default async function RestaurantDashboard({
         price: priceStr,
         categoryId,
         stock: stockNum,
-        status: finalStatus, // Lưu trạng thái đã được kiểm duyệt
+        status: finalStatus,
         description: description || null,
       })
       .where(eq(dishes.id, dishId));
@@ -220,18 +244,10 @@ export default async function RestaurantDashboard({
               📦 {t.restaurantOrders}
             </Link>
 
-            <form action={deleteRestaurant}>
-              <DeleteConfirmButton
-                confirmMessage={
-                  currentLang === "vi"
-                    ? "Bạn có chắc chắn muốn xóa nhà hàng này cùng toàn bộ menu không?"
-                    : "Are you sure you want to delete this restaurant and its menu?"
-                }
-                className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm border border-red-200 cursor-pointer"
-              >
-                🗑️ {currentLang === "vi" ? "Xóa quán" : "Delete"}
-              </DeleteConfirmButton>
-            </form>
+            <DeleteRestaurantModal
+              deleteAction={deleteRestaurantAction}
+              lang={currentLang}
+            />
           </div>
         </div>
 

@@ -75,6 +75,7 @@ export const dishes = pgTable("dishes", {
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey(),
   userId: uuid("user_id").notNull(),
+  restaurantId: text("restaurant_id").notNull(),
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   deliveryAddress: text("delivery_address").notNull(),
   status: orderStatusEnum("status").notNull().default("Pending"),
