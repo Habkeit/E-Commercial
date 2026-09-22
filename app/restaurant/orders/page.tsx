@@ -1,13 +1,12 @@
 // app/restaurant/orders/page.tsx
 import { db } from "@/db";
-import { users, restaurants, dishes, orderItems, orders } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { users, restaurants, orders } from "@/db/schema";
+import { eq, desc, or, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-
-type Order = typeof orders.$inferSelect;
+import { getTranslations, getLocale } from "next-intl/server";
 
 export default async function RestaurantOrdersPage() {
   const { userId: clerkId } = await auth();
@@ -27,50 +26,45 @@ export default async function RestaurantOrdersPage() {
   const myRestaurants = await db
     .select()
     .from(restaurants)
-    .where(eq(restaurants.userId, currentUser.id));
+    .where(
+      or(
+        eq(restaurants.userId, currentUser.id),
+        eq(restaurants.userId, clerkId),
+      ),
+    );
+
+  const t = await getTranslations("RestaurantOrders");
+  const tDashboard = await getTranslations("RestaurantDashboard");
+  const tCommon = await getTranslations("Common");
+  const tOrders = await getTranslations("Orders");
+  const locale = await getLocale();
+
   if (myRestaurants.length === 0) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            No Restaurant Found
+            {tDashboard("noRestaurantTitle")}
           </h1>
-          <p className="text-gray-500 mb-6">
-            Your account is not registered as a restaurant partner.
-          </p>
+          <p className="text-gray-500 mb-6">{tDashboard("noRestaurantDesc")}</p>
           <Link
             href="/"
             className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
           >
-            Back to Home
+            {tCommon("backToHome")}
           </Link>
         </div>
       </main>
     );
   }
-  const restaurant = myRestaurants[0];
 
-  const restaurantDishes = await db
+  const restaurantIds = myRestaurants.map((r) => r.id);
+
+  const incomingOrders = await db
     .select()
-    .from(dishes)
-    .where(eq(dishes.restaurantId, restaurant.id));
-  const dishIds = restaurantDishes.map((d) => d.id);
-
-  let incomingOrders: Order[] = [];
-
-  if (dishIds.length > 0) {
-    const items = await db.select().from(orderItems);
-    const relevantItems = items.filter((item) => dishIds.includes(item.dishId));
-    const orderIds = Array.from(new Set(relevantItems.map((i) => i.orderId)));
-
-    if (orderIds.length > 0) {
-      const allOrders = await db
-        .select()
-        .from(orders)
-        .orderBy(desc(orders.createdAt));
-      incomingOrders = allOrders.filter((o) => orderIds.includes(o.id));
-    }
-  }
+    .from(orders)
+    .where(inArray(orders.restaurantId, restaurantIds))
+    .orderBy(desc(orders.createdAt));
 
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-6">
@@ -78,23 +72,23 @@ export default async function RestaurantOrdersPage() {
         <div className="flex justify-between items-center">
           <div>
             <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-semibold">
-              Partner Orders
+              {t("partnerOrders")}
             </span>
             <h1 className="text-3xl font-extrabold text-gray-900 mt-2">
-              Incoming Orders
+              {t("incomingOrders")}
             </h1>
           </div>
           <Link
             href="/restaurant/dashboard"
             className="text-sm font-medium text-gray-600 hover:text-gray-900 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm"
           >
-            ← Back to Dashboard
+            {t("backToDashboard")}
           </Link>
         </div>
 
         {incomingOrders.length === 0 ? (
           <div className="bg-white p-12 rounded-2xl shadow-sm text-center border border-gray-100">
-            <p className="text-gray-500 text-lg">No incoming orders yet.</p>
+            <p className="text-gray-500 text-lg">{t("noOrders")}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -106,10 +100,13 @@ export default async function RestaurantOrdersPage() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-4">
                   <div>
                     <p className="text-xs text-gray-400 font-mono">
-                      Order ID: {order.id}
+                      {t("orderId")} {order.id}
                     </p>
                     <p className="text-sm font-semibold text-gray-800 mt-1">
-                      Time: {new Date(order.createdAt).toLocaleString()}
+                      {t("time")}{" "}
+                      {new Date(order.createdAt).toLocaleString(
+                        locale === "vi" ? "vi-VN" : "en-US",
+                      )}
                     </p>
                   </div>
                   <span
@@ -121,20 +118,27 @@ export default async function RestaurantOrdersPage() {
                           : "bg-green-100 text-green-700"
                     }`}
                   >
-                    {order.status}
+                    {order.status === "Pending" && tOrders("statusPending")}
+                    {order.status === "Delivering" &&
+                      tOrders("statusDelivering")}
+                    {order.status === "Completed" && tOrders("statusCompleted")}
+                    {order.status !== "Pending" &&
+                      order.status !== "Delivering" &&
+                      order.status !== "Completed" &&
+                      order.status}
                   </span>
                 </div>
 
                 <div className="text-sm space-y-1 text-gray-600">
                   <p>
                     <span className="font-medium text-gray-800">
-                      Delivery Address:
+                      {t("deliveryAddress")}
                     </span>{" "}
                     {order.deliveryAddress}
                   </p>
                   <p>
                     <span className="font-medium text-gray-800">
-                      Total Amount:
+                      {t("totalAmount")}
                     </span>{" "}
                     <span className="font-bold text-rose-600">
                       {Number(order.totalAmount).toLocaleString()} VND
@@ -142,7 +146,6 @@ export default async function RestaurantOrdersPage() {
                   </p>
                 </div>
 
-                {/* Nút bấm cập nhật trạng thái đơn hàng */}
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
                   <form
                     action={async () => {
@@ -157,9 +160,9 @@ export default async function RestaurantOrdersPage() {
                   >
                     <button
                       type="submit"
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm"
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                     >
-                      Mark as Delivering 🚚
+                      {t("markDelivering")}
                     </button>
                   </form>
 
@@ -176,9 +179,9 @@ export default async function RestaurantOrdersPage() {
                   >
                     <button
                       type="submit"
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm"
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                     >
-                      Mark as Completed ✅
+                      {t("markCompleted")}
                     </button>
                   </form>
                 </div>

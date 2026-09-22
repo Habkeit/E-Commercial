@@ -4,8 +4,7 @@ import { restaurants, dishes, categories } from "@/db/schema";
 import { eq, asc, and, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { dict } from "@/app/utils/dictionary";
+import { getTranslations } from "next-intl/server";
 import CategoryDishList from "./CategoryDishList"; 
 
 interface PageProps {
@@ -40,9 +39,8 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
       ),
     );
 
-  const cookieStore = await cookies();
-  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-  const t = dict[currentLang as keyof typeof dict];
+  const tCommon = await getTranslations("Common");
+  const tDetail = await getTranslations("RestaurantDetail");
 
   return (
     <main className="min-h-screen bg-gray-50 py-10 px-6">
@@ -52,20 +50,20 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
             href="/foods"
             className="text-rose-600 font-medium hover:underline flex items-center gap-1"
           >
-            ← {t.backToMenu || "Back to Menu"}
+            ← {tCommon("backToMenu")}
           </Link>
           <div className="flex gap-3">
             <Link
               href="/cart"
               className="px-4 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl hover:bg-rose-700 transition-all shadow-sm flex items-center gap-2"
             >
-              <span>🛒</span> {t.cart || "Cart"}
+              <span>🛒</span> {tCommon("cart")}
             </Link>
             <Link
               href="/orders"
               className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-all shadow-sm"
             >
-              📦 {t.orders || "Orders"}
+              📦 {tCommon("orders")}
             </Link>
           </div>
         </div>
@@ -88,8 +86,7 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
         <div className="space-y-10">
           {restaurantCategories.length === 0 ? (
             <p className="text-center text-gray-500 bg-white p-8 rounded-2xl border border-gray-100">
-              This restaurant has no categories or dishes available at the
-              moment. Please check back later!
+              {tDetail("noCategoriesOrDishes")}
             </p>
           ) : (
             restaurantCategories.map((category) => {
@@ -112,8 +109,16 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
                     )}
                   </div>
 
-                  {/* Truyền riêng danh sách món của danh mục này vào để phân trang độc lập */}
-                  <CategoryDishList dishes={dishesInCategory} />
+                  <CategoryDishList
+                    dishes={dishesInCategory.map((dish) => ({
+                      id: dish.id,
+                      name: dish.name,
+                      description: dish.description,
+                      price: String(dish.price),
+                      status: dish.status,
+                      categoryId: dish.categoryId,
+                    }))}
+                  />
                 </div>
               );
             })

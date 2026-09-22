@@ -7,8 +7,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { uuidv7 } from "uuidv7";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { dict } from "@/app/utils/dictionary";
+import { getTranslations } from "next-intl/server";
 import CheckoutForm from "./CheckoutForm";
 
 export default async function CartPage() {
@@ -47,9 +46,7 @@ export default async function CartPage() {
       .where(eq(users.clerkId, clerkId));
   }
 
-  const cookieStore = await cookies();
-  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-  const t = dict[currentLang as keyof typeof dict];
+  const t = await getTranslations("Cart");
 
   const items = await db
     .select({
@@ -74,7 +71,7 @@ export default async function CartPage() {
     "use server";
 
     const cartId = formData.get("cartId") as string;
-    const action = formData.get("action") as string; // "increase", "decrease", hoặc "remove"
+    const action = formData.get("action") as string;
 
     const [item] = await db
       .select()
@@ -107,6 +104,8 @@ export default async function CartPage() {
   async function handleCheckout(formData: FormData) {
     "use server";
 
+    const tAction = await getTranslations("Cart");
+
     const phoneNumber = formData.get("phoneNumber") as string;
     const address = formData.get("address") as string;
 
@@ -114,17 +113,15 @@ export default async function CartPage() {
       return {
         success: false,
         message:
-          currentLang === "vi"
-            ? "Vui lòng điền đủ Số điện thoại và Địa chỉ!"
-            : "Please fill in both Phone Number and Address!",
+          tAction("fillPhoneAndAddress") ||
+          "Please fill in both Phone Number and Address!",
       };
     }
 
     if (items.length === 0) {
       return {
         success: false,
-        message:
-          currentLang === "vi" ? "Giỏ hàng đang trống!" : "Your cart is empty!",
+        message: tAction("emptyCart"),
       };
     }
 
@@ -137,29 +134,38 @@ export default async function CartPage() {
       if (!currentDish) {
         return {
           success: false,
-          message:
-            currentLang === "vi"
-              ? `Món "${item.dishName}" không còn tồn tại trên hệ thống.`
-              : `Dish "${item.dishName}" no longer exists on the system.`,
+          message: `Dish "${item.dishName}" no longer exists on the system.`,
         };
       }
 
       if (currentDish.stock < item.quantity) {
         return {
           success: false,
-          message:
-            currentLang === "vi"
-              ? `Rất tiếc! Món "${item.dishName}" chỉ còn ${currentDish.stock} phần. Vui lòng giảm số lượng.`
-              : `Sorry! Dish "${item.dishName}" only has ${currentDish.stock} left. Please reduce the quantity.`,
+          message: `Sorry! Dish "${item.dishName}" only has ${currentDish.stock} left.`,
         };
       }
     }
+
+    const firstDishIdInCart = items[0].dishId;
+    const [firstDish] = await db
+      .select({ restaurantId: dishes.restaurantId })
+      .from(dishes)
+      .where(eq(dishes.id, firstDishIdInCart));
+
+    if (!firstDish || !firstDish.restaurantId) {
+      return {
+        success: false,
+        message: "Cannot determine restaurant for this order.",
+      };
+    }
+    const currentRestaurantId = firstDish.restaurantId;
 
     const newOrderId = uuidv7();
 
     await db.insert(orders).values({
       id: newOrderId,
       userId: currentUser.id,
+      restaurantId: currentRestaurantId,
       totalAmount: totalAmount.toString(),
       deliveryAddress: `${address} - Phone: ${phoneNumber}`,
       status: "Pending",
@@ -188,9 +194,7 @@ export default async function CartPage() {
 
     await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
 
-    revalidatePath("/cart");
-    revalidatePath("/orders");
-    revalidatePath("/restaurant/[id]", "page");
+    revalidatePath("/", "layout");
 
     redirect("/orders");
   }
@@ -200,14 +204,14 @@ export default async function CartPage() {
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
         <div className="text-center bg-white p-10 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            🛒 {t.emptyCart}
+            🛒 {t("emptyCart")}
           </h2>
-          <p className="text-gray-500 mb-6 text-sm">{t.emptyCartDesc}</p>
+          <p className="text-gray-500 mb-6 text-sm">{t("emptyCartDesc")}</p>
           <Link
             href="/foods"
             className="inline-block bg-rose-500 hover:bg-rose-600 text-white font-medium px-6 py-3 rounded-xl transition-colors"
           >
-            {t.exploreMenu}
+            {t("exploreMenu")}
           </Link>
         </div>
       </main>
@@ -217,10 +221,9 @@ export default async function CartPage() {
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-6">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cart Items Section */}
         <div className="lg:col-span-2 space-y-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            🛒 {t.ShoppingCart}
+            🛒 {t("ShoppingCart")}
           </h1>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-6">
             <div className="divide-y divide-gray-100">
@@ -296,18 +299,15 @@ export default async function CartPage() {
           </div>
         </div>
 
-        {/* Delivery Info & Checkout Form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-fit space-y-6">
           <h2 className="text-xl font-bold text-gray-900 border-b pb-4">
-            {t.deliveryInfo}
+            {t("deliveryInfo")}
           </h2>
 
-          {/* Sử dụng CheckoutForm để hiển thị toast message chuẩn xác */}
           <CheckoutForm
             handleCheckout={handleCheckout}
             defaultPhone={defaultPhone}
             totalAmount={totalAmount}
-            t={t}
           />
         </div>
       </div>

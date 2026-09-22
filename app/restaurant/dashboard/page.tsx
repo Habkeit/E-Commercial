@@ -5,11 +5,11 @@ import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { dict } from "@/app/utils/dictionary";
+import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import DeleteConfirmButton from "@/components/DeleteConfirmButton";
 import DeleteRestaurantModal from "./DeleteRestaurantModal";
+import { z } from "zod";
 
 export default async function RestaurantDashboard({
   searchParams,
@@ -39,25 +39,24 @@ export default async function RestaurantDashboard({
   const myRestaurants = await db
     .select()
     .from(restaurants)
-    .where(eq(restaurants.userId, currentUser.id));
+    .where(eq(restaurants.userId, clerkId));
 
-  const cookieStore = await cookies();
-  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-  const t = dict[currentLang as keyof typeof dict];
+  const t = await getTranslations("RestaurantDashboard");
+  const tCommon = await getTranslations("Common");
 
   if (myRestaurants.length === 0) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {t.noRestaurantTitle}
+            {t("noRestaurantTitle")}
           </h1>
-          <p className="text-gray-500 mb-6">{t.noRestaurantDesc}</p>
+          <p className="text-gray-500 mb-6">{t("noRestaurantDesc")}</p>
           <Link
             href="/"
             className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
           >
-            {t.backToHome}
+            {tCommon("backToHome")}
           </Link>
         </div>
       </main>
@@ -93,29 +92,24 @@ export default async function RestaurantDashboard({
     redirect("/restaurant/dashboard");
   }
 
-  // 👇 HÀM XÓA QUÁN MỚI ĐÃ THÊM LOGIC VALIDATE
   async function deleteRestaurantAction() {
     "use server";
 
-    // 1. Kiểm tra đơn hàng
+    const tAction = await getTranslations("RestaurantDashboard");
+
     const restaurantOrders = await db
       .select()
       .from(orders)
       .where(eq(orders.restaurantId, restaurant.id))
       .limit(1);
 
-    // 2. Nếu có đơn hàng -> Chặn
     if (restaurantOrders.length > 0) {
       return {
         success: false,
-        message:
-          currentLang === "vi"
-            ? "Không thể xóa nhà hàng vì đã có đơn hàng được tạo."
-            : "Cannot delete restaurant because there are existing orders.",
+        message: tAction("deleteErrorHasOrders"),
       };
     }
 
-    // 3. Nếu không có đơn hàng -> Xóa toàn bộ
     await db.delete(dishes).where(eq(dishes.restaurantId, restaurant.id));
     await db
       .delete(categories)
@@ -131,47 +125,55 @@ export default async function RestaurantDashboard({
 
     const dishId = formData.get("dishId") as string;
     const name = formData.get("name") as string;
-    const priceStr = formData.get("price") as string;
     const categoryId = formData.get("categoryId") as string;
-    const stockStr = formData.get("stock") as string;
     const status = formData.get("status") as string;
     const description = formData.get("description") as string;
 
     if (
       !dishId ||
       !name ||
-      !priceStr ||
       !categoryId ||
-      stockStr === null ||
-      !status
+      !status ||
+      formData.get("stock") === null ||
+      formData.get("price") === null
     ) {
       throw new Error("Missing required fields");
     }
 
-    const priceNum = Number(priceStr);
-    const stockNum = Number(stockStr);
+    const numberValidator = z.object({
+      price: z.coerce
+        .number()
+        .int("Invalid price. VND must be a positive integer without decimals.")
+        .min(0, "Invalid price. Cannot be negative."),
+      stock: z.coerce
+        .number()
+        .int("Stock must be an integer.")
+        .min(0, "Stock cannot be negative."),
+    });
 
-    if (isNaN(priceNum) || priceNum < 0 || !Number.isInteger(priceNum)) {
-      throw new Error("Invalid price. VND must be a positive integer.");
+    const parsed = numberValidator.safeParse({
+      price: formData.get("price"),
+      stock: formData.get("stock"),
+    });
+
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0].message);
     }
-    if (isNaN(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
-      throw new Error("Invalid stock quantity.");
-    }
+
+    const { price, stock } = parsed.data;
 
     let finalStatus = status;
-    if (stockNum === 0) {
-      if (status === "active") {
-        finalStatus = "inactive";
-      }
+    if (stock === 0 && status === "active") {
+      finalStatus = "inactive";
     }
 
     await db
       .update(dishes)
       .set({
         name,
-        price: priceStr,
+        price: price.toString(),
         categoryId,
-        stock: stockNum,
+        stock: stock,
         status: finalStatus,
         description: description || null,
       })
@@ -204,13 +206,13 @@ export default async function RestaurantDashboard({
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-semibold">
-              {t.restaurantDashboard}
+              {t("restaurantDashboard")}
             </span>
             <h1 className="text-3xl font-extrabold text-gray-900 mt-2">
               {restaurant.name}
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              {t.address}: {restaurant.houseNumber} {restaurant.street},{" "}
+              {t("address")}: {restaurant.houseNumber} {restaurant.street},{" "}
               {restaurant.ward}, {restaurant.province}
             </p>
           </div>
@@ -220,34 +222,31 @@ export default async function RestaurantDashboard({
                 href="?edit=true"
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm shadow-sm flex items-center gap-1.5"
               >
-                ✏️ {t.editBtn}
+                ✏️ {t("editBtn")}
               </Link>
             )}
             <Link
               href="/restaurant/dishes/new"
               className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-rose-500/20"
             >
-              {t.addNewDish}
+              {t("addNewDish")}
             </Link>
 
             <Link
               href="/restaurant/categories/new"
               className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-indigo-500/20"
             >
-              📑 {t.addCategory}
+              📑 {t("addCategory")}
             </Link>
 
             <Link
               href="/restaurant/orders"
               className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-orange-500/20"
             >
-              📦 {t.restaurantOrders}
+              📦 {t("restaurantOrders")}
             </Link>
 
-            <DeleteRestaurantModal
-              deleteAction={deleteRestaurantAction}
-              lang={currentLang}
-            />
+            <DeleteRestaurantModal deleteAction={deleteRestaurantAction} />
           </div>
         </div>
 
@@ -257,7 +256,7 @@ export default async function RestaurantDashboard({
 
             <div className="flex justify-between items-center border-b pb-4">
               <h2 className="text-xl font-bold text-gray-900">
-                {t.editRestaurantInfo}
+                {t("editRestaurantInfo")}
               </h2>
               <Link
                 href="?"
@@ -270,7 +269,7 @@ export default async function RestaurantDashboard({
             <form action={updateRestaurantInfo} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t.restaurantName} <span className="text-rose-500">*</span>
+                  {t("restaurantName")} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -284,7 +283,7 @@ export default async function RestaurantDashboard({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t.houseNumber} <span className="text-rose-500">*</span>
+                    {t("houseNumber")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -296,7 +295,7 @@ export default async function RestaurantDashboard({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t.street} <span className="text-rose-500">*</span>
+                    {t("street")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -311,7 +310,7 @@ export default async function RestaurantDashboard({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t.ward} <span className="text-rose-500">*</span>
+                    {t("ward")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -323,7 +322,7 @@ export default async function RestaurantDashboard({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t.cityProvince} <span className="text-rose-500">*</span>
+                    {t("cityProvince")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -340,13 +339,13 @@ export default async function RestaurantDashboard({
                   type="submit"
                   className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm shadow-sm cursor-pointer"
                 >
-                  {t.saveChanges}
+                  {t("saveChanges")}
                 </button>
                 <Link
                   href="?"
                   className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm shadow-sm flex items-center"
                 >
-                  {t.cancelBtn}
+                  {t("cancelBtn")}
                 </Link>
               </div>
             </form>
@@ -355,11 +354,11 @@ export default async function RestaurantDashboard({
 
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <h2 className="text-xl font-bold text-gray-900 border-b pb-4">
-            {t.menuManagement} ({restaurantDishes.length} {t.dishesCount})
+            {t("menuManagement")} ({restaurantDishes.length} {t("dishesCount")})
           </h2>
 
           {restaurantDishes.length === 0 ? (
-            <p className="text-gray-500 text-center py-6">{t.emptyMenu}</p>
+            <p className="text-gray-500 text-center py-6">{t("emptyMenu")}</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {restaurantDishes.map((dish) => {
@@ -376,7 +375,7 @@ export default async function RestaurantDashboard({
 
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            {t.dishNameLabel || "Tên món"}{" "}
+                            {t("dishNameLabel")}{" "}
                             <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -391,7 +390,7 @@ export default async function RestaurantDashboard({
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1">
-                              {t.dishPriceLabel || "Giá"}{" "}
+                              {t("dishPriceLabel")}{" "}
                               <span className="text-rose-500">*</span>
                             </label>
                             <input
@@ -406,7 +405,7 @@ export default async function RestaurantDashboard({
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1">
-                              Stock (Kho){" "}
+                              {t("stock")}{" "}
                               <span className="text-rose-500">*</span>
                             </label>
                             <input
@@ -423,7 +422,7 @@ export default async function RestaurantDashboard({
 
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            Status (Trạng thái){" "}
+                            {t("status")}{" "}
                             <span className="text-rose-500">*</span>
                           </label>
                           <select
@@ -432,19 +431,16 @@ export default async function RestaurantDashboard({
                             required
                             className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
                           >
-                            <option value="active">🟢 Active (Đang bán)</option>
-                            <option value="pre_order">
-                              ⏳ Pre-order (Đặt trước)
-                            </option>
-                            <option value="inactive">
-                              🔴 Inactive (Tạm ngưng)
-                            </option>
+                            <option value="active">🟢 Active</option>
+                            <option value="pre_order">⏳ Pre-order</option>
+                            <option value="inactive">🔴 Inactive</option>
                           </select>
                         </div>
 
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            Category <span className="text-rose-500">*</span>
+                            {t("category")}{" "}
+                            <span className="text-rose-500">*</span>
                           </label>
                           <select
                             name="categoryId"
@@ -453,7 +449,7 @@ export default async function RestaurantDashboard({
                             className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
                           >
                             <option value="" disabled>
-                              Select a category
+                              {t("selectCategory")}
                             </option>
                             {allCategories.map((cat) => (
                               <option key={cat.id} value={cat.id}>
@@ -465,7 +461,7 @@ export default async function RestaurantDashboard({
 
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            {t.dishDescLabel || "Mô tả"}
+                            {t("dishDescLabel")}
                           </label>
                           <textarea
                             name="description"
@@ -480,13 +476,13 @@ export default async function RestaurantDashboard({
                             type="submit"
                             className="flex-1 bg-rose-500 hover:bg-rose-600 text-white py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
                           >
-                            {t.saveChanges}
+                            {t("saveChanges")}
                           </button>
                           <Link
                             href="?"
                             className="flex-1 bg-white hover:bg-gray-50 border text-center text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors block"
                           >
-                            {t.cancelBtn}
+                            {t("cancelBtn")}
                           </Link>
                         </div>
                       </form>
@@ -503,7 +499,7 @@ export default async function RestaurantDashboard({
                       <Link
                         href={`?editDish=${dish.id}`}
                         className="text-gray-400 hover:text-rose-600 p-1 rounded-full transition-colors"
-                        title={t.editBtn}
+                        title={t("editBtn")}
                       >
                         ✏️
                       </Link>
@@ -511,15 +507,9 @@ export default async function RestaurantDashboard({
                       <form action={deleteDish}>
                         <input type="hidden" name="dishId" value={dish.id} />
                         <DeleteConfirmButton
-                          confirmMessage={
-                            currentLang === "vi"
-                              ? "Bạn có chắc chắn muốn xóa món này?"
-                              : "Are you sure you want to delete this dish?"
-                          }
+                          confirmMessage={t("deleteDishConfirm")}
                           className="text-gray-400 hover:text-red-600 p-1 rounded-full transition-colors cursor-pointer"
-                          title={
-                            currentLang === "vi" ? "Xóa món" : "Delete dish"
-                          }
+                          title={t("deleteDishTitle")}
                         >
                           🗑️
                         </DeleteConfirmButton>
@@ -531,7 +521,7 @@ export default async function RestaurantDashboard({
                         {dish.name}
                       </h3>
                       <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                        {dish.description || t.noDescription}
+                        {dish.description || t("noDescription")}
                       </p>
                     </div>
                     <div className="mt-4 pt-4 border-t border-gray-200/60 flex justify-between items-center">
@@ -540,7 +530,7 @@ export default async function RestaurantDashboard({
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded-md">
-                          Stock: {dish.stock ?? 0}
+                          {t("stock")}: {dish.stock ?? 0}
                         </span>
 
                         <span
@@ -556,7 +546,7 @@ export default async function RestaurantDashboard({
                             ? "⏳ Pre-order"
                             : dish.status === "inactive"
                               ? "🔴 Inactive"
-                              : t.activeStatus || "Active"}
+                              : t("activeStatus")}
                         </span>
                       </div>
                     </div>

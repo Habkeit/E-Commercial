@@ -5,8 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { dict } from "@/app/utils/dictionary";
+import { getTranslations, getLocale } from "next-intl/server";
 
 type Order = typeof orders.$inferSelect;
 
@@ -17,10 +16,9 @@ export default async function OrdersPage() {
     redirect("/sign-in");
   }
 
-  
-  const cookieStore = await cookies();
-  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-  const t = dict[currentLang as keyof typeof dict];
+  const t = await getTranslations("Orders");
+  const tCommon = await getTranslations("Common");
+  const locale = await getLocale();
 
   let myOrders: Order[] = [];
 
@@ -43,18 +41,17 @@ export default async function OrdersPage() {
     <main className="min-h-screen bg-gray-50 py-12 px-6">
       <div className="max-w-4xl mx-auto space-y-8">
         <h1 className="text-3xl font-extrabold text-gray-900">
-          📦 {t.orderHistoryTitle}
+          📦 {t("orderHistoryTitle")}
         </h1>
 
         {myOrders.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl shadow-sm text-center border border-gray-100">
-            <p className="text-gray-500 mb-4">{t.noOrdersText}</p>{" "}
-            {/* 👈 Dịch thông báo */}
+            <p className="text-gray-500 mb-4">{t("noOrdersText")}</p>
             <Link
               href="/foods"
               className="text-rose-500 font-semibold hover:underline"
             >
-              {t.startOrderingLink}
+              {t("startOrderingLink")}
             </Link>
           </div>
         ) : (
@@ -66,19 +63,19 @@ export default async function OrdersPage() {
               >
                 <div>
                   <p className="text-sm text-gray-500">
-                    {t.orderIdLabel}
+                    {t("orderIdLabel")}{" "}
                     <span className="font-mono text-gray-800">
                       {order.id.slice(0, 8)}...
                     </span>
                   </p>
                   <p className="text-gray-600 mt-1">
-                    {t.dateLabel}{" "}
+                    {t("dateLabel")}{" "}
                     {new Date(order.createdAt).toLocaleString(
-                      currentLang === "vi" ? "vi-VN" : "en-US",
-                    )}{" "}
+                      locale === "vi" ? "vi-VN" : "en-US",
+                    )}
                   </p>
                   <p className="text-gray-600">
-                    {t.address}: {order.deliveryAddress}{" "}
+                    {tCommon("address")}: {order.deliveryAddress}
                   </p>
                 </div>
 
@@ -97,13 +94,13 @@ export default async function OrdersPage() {
                             : "bg-red-100 text-red-700"
                     }`}
                   >
-                    {order.status === "Pending" && t.statusPending}
-                    {order.status === "Delivering" && t.statusDelivering}
-                    {order.status === "Completed" && t.statusCompleted}
+                    {order.status === "Pending" && t("statusPending")}
+                    {order.status === "Delivering" && t("statusDelivering")}
+                    {order.status === "Completed" && t("statusCompleted")}
                     {order.status !== "Pending" &&
                       order.status !== "Delivering" &&
                       order.status !== "Completed" &&
-                      t.statusCancelled}
+                      t("statusCancelled")}
                   </span>
                 </div>
               </div>

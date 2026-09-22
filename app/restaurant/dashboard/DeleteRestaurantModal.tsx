@@ -3,17 +3,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface Props {
   deleteAction: () => Promise<{ success: boolean; message?: string }>;
-  lang: string;
 }
 
-export default function DeleteRestaurantModal({ deleteAction, lang }: Props) {
+export default function DeleteRestaurantModal({ deleteAction }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const t = useTranslations("RestaurantDashboard");
 
   const handleDelete = async () => {
     setIsLoading(true);
@@ -24,11 +25,11 @@ export default function DeleteRestaurantModal({ deleteAction, lang }: Props) {
       if (res.success) {
         router.push("/");
       } else {
-        setError(res.message || "Xóa thất bại");
+        setError(res.message || t("deleteErrorGeneric"));
         setIsLoading(false);
       }
     } catch {
-      setError("Error occurred while deleting the restaurant.");
+      setError(t("deleteErrorGeneric"));
       setIsLoading(false);
     }
   };
@@ -39,7 +40,7 @@ export default function DeleteRestaurantModal({ deleteAction, lang }: Props) {
         onClick={() => setIsOpen(true)}
         className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm border border-red-200 cursor-pointer"
       >
-        🗑️ {lang === "vi" ? "Xóa quán" : "Delete"}
+        🗑️ {t("deleteBtn")}
       </button>
 
       {isOpen && (
@@ -47,13 +48,9 @@ export default function DeleteRestaurantModal({ deleteAction, lang }: Props) {
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="mb-5">
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {lang === "vi" ? "Xác nhận xóa nhà hàng" : "Delete Restaurant"}
+                {t("deleteModalTitle")}
               </h3>
-              <p className="text-gray-600 text-sm">
-                {lang === "vi"
-                  ? "Bạn có chắc chắn muốn xóa nhà hàng này cùng toàn bộ danh mục và món ăn không? Hành động này không thể hoàn tác."
-                  : "Are you sure you want to delete this restaurant and its menu? This action cannot be undone."}
-              </p>
+              <p className="text-gray-600 text-sm">{t("deleteModalDesc")}</p>
             </div>
 
             {error && (
@@ -70,22 +67,16 @@ export default function DeleteRestaurantModal({ deleteAction, lang }: Props) {
                   setError(null);
                 }}
                 disabled={isLoading}
-                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {lang === "vi" ? "Hủy" : "Cancel"}
+                {t("deleteModalCancel")}
               </button>
               <button
                 onClick={handleDelete}
                 disabled={isLoading}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {isLoading
-                  ? lang === "vi"
-                    ? "Đang xử lý..."
-                    : "Processing..."
-                  : lang === "vi"
-                    ? "Xóa vĩnh viễn"
-                    : "Confirm Delete"}
+                {isLoading ? t("processing") : t("deleteModalConfirm")}
               </button>
             </div>
           </div>

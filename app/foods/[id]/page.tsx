@@ -1,3 +1,4 @@
+// app/foods/[id]/page.tsx
 import { notFound } from "next/navigation";
 import AddToCartButton from "./AddToCartButton";
 

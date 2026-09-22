@@ -5,8 +5,12 @@ import { ClerkProvider } from "@clerk/nextjs";
 import Link from "next/link";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import { cookies } from "next/headers";
-import { dict } from "@/app/utils/dictionary";
+
+// Import component LanguageSwitcher (đảm bảo đúng đường dẫn của bạn)
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getLocale, getTranslations } from "next-intl/server";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,32 +24,42 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-  const t = dict[currentLang as keyof typeof dict];
+  const locale = await getLocale();
+  const messages = await getMessages();
+
+  const t = await getTranslations("RestaurantDashboard");
 
   return (
     <ClerkProvider>
-      <html lang={currentLang}>
+      <html lang={locale}>
         <body className={inter.className}>
-          <Navbar />
+          <NextIntlClientProvider messages={messages}>
+            <Navbar />
 
-          <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-end gap-4">
-            <Link
-              href="/restaurant/dashboard"
-              className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
-            >
-              🏪 {t.restaurantDashboard}
-            </Link>
-            <Link
-              href="/restaurant/register"
-              className="text-sm font-medium text-gray-700 hover:text-rose-500 transition-colors"
-            >
-              {t.restaurantRegister} 🏪
-            </Link>
-          </div>
+            {/* Đổi thành flex justify-between items-center để đẩy nút ngôn ngữ sang trái */}
+            <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-between items-center gap-4">
+              {/* Nút chuyển đổi ngôn ngữ */}
+              <LanguageSwitcher />
 
-          {children}
+              {/* Nhóm các nút quản lý nhà hàng nằm bên phải */}
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/restaurant/dashboard"
+                  className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                >
+                  🏪 {t("restaurantDashboard")}
+                </Link>
+                <Link
+                  href="/restaurant/register"
+                  className="text-sm font-medium text-gray-700 hover:text-rose-500 transition-colors"
+                >
+                  {t("restaurantRegister")} 🏪
+                </Link>
+              </div>
+            </div>
+
+            {children}
+          </NextIntlClientProvider>
         </body>
       </html>
     </ClerkProvider>

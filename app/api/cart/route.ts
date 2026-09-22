@@ -2,21 +2,46 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { cartItems, users, dishes, restaurants } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
-
+import { eq, and, sql} from "drizzle-orm";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { uuidv7 } from "uuidv7";
 
 export async function GET() {
   try {
     const { userId: clerkId } = await auth();
     if (!clerkId) return NextResponse.json({ success: true, cart: [] });
 
-    
-    const userRecord = await db.query.users.findFirst({
+    // Đảm bảo user đã tồn tại trong bảng users (sync tự động)
+    let userRecord = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
     });
-    if (!userRecord) return NextResponse.json({ success: true, cart: [] });
 
+    if (!userRecord) {
+      const clerkUser = await currentUser();
+      const newUserId = uuidv7();
+      const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
+      const name =
+        `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
+        "User";
+
+      await db.insert(users).values({
+        id: newUserId,
+        clerkId: clerkId,
+        email: email,
+        fullName: name,
+      });
+
+      userRecord = {
+        id: newUserId,
+        clerkId: clerkId,
+        email: email,
+        fullName: name,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    const currentUserId = String(userRecord.id);
 
     const items = await db
       .select({
@@ -29,10 +54,9 @@ export async function GET() {
       })
       .from(cartItems)
       .innerJoin(dishes, eq(cartItems.dishId, dishes.id))
-      .innerJoin(restaurants, eq(dishes.restaurantId, restaurants.id))
-      .where(eq(cartItems.userId, userRecord.id));
+      .innerJoin(restaurants, sql`${dishes.restaurantId}::uuid = ${restaurants.id}`) 
+      .where(eq(cartItems.userId, currentUserId));
 
-      
     const formattedCart = items.map((i) => ({
       ...i,
       price: Number(i.price),
@@ -48,7 +72,6 @@ export async function GET() {
   }
 }
 
-
 export async function POST(req: Request) {
   try {
     const { userId: clerkId } = await auth();
@@ -60,21 +83,42 @@ export async function POST(req: Request) {
 
     const { dishId, quantity, note } = await req.json();
 
-    const userRecord = await db.query.users.findFirst({
+    let userRecord = await db.query.users.findFirst({
       where: eq(users.clerkId, clerkId),
     });
-    if (!userRecord)
-      return NextResponse.json(
-        { success: false, message: "User not found" },
-        { status: 404 },
-      );
 
-    
+    if (!userRecord) {
+      const clerkUser = await currentUser();
+      const newUserId = uuidv7();
+      const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
+      const name =
+        `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
+        "User";
+
+      await db.insert(users).values({
+        id: newUserId,
+        clerkId: clerkId,
+        email: email,
+        fullName: name,
+      });
+
+      // 👇 CHÍNH LÀ ĐOẠN NÀY: Bạn phải gán lại dữ liệu thì ESLint mới thấy 
+      // từ khóa "let" có tác dụng, và TypeScript mới biết userRecord đã có ID
+      userRecord = {
+        id: newUserId,
+        clerkId: clerkId,
+        email: email,
+        fullName: name,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    const currentUserId = String(userRecord.id);
+
+    // 💡 Kiểm tra item trong giỏ bằng clerkId
     const existingItem = await db.query.cartItems.findFirst({
-      where: and(
-        eq(cartItems.userId, userRecord.id),
-        eq(cartItems.dishId, dishId),
-      ),
+      where: and(eq(cartItems.userId, currentUserId), eq(cartItems.dishId, dishId)),
     });
 
     if (existingItem) {
@@ -88,7 +132,8 @@ export async function POST(req: Request) {
         .where(eq(cartItems.id, existingItem.id));
     } else {
       await db.insert(cartItems).values({
-        userId: userRecord.id,
+        id: uuidv7(),
+        userId: clerkId, // 💡 Lưu trực tiếp clerkId vào bảng cart_items
         dishId,
         quantity,
         note,

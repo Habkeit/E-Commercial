@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     await db.insert(restaurants).values({
       id: uuidv7(),
-      userId: currentUserId,
+      userId: clerkId,
       name,
       houseNumber: houseNumber || "",
       street,

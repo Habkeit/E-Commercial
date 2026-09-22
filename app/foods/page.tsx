@@ -3,8 +3,7 @@ import Link from "next/link";
 import { db } from "@/db";
 import { restaurants } from "@/db/schema";
 import { ilike } from "drizzle-orm";
-import { cookies } from "next/headers";
-import { dict } from "@/app/utils/dictionary";
+import { getTranslations } from "next-intl/server";
 import SearchBox from "./SearchBox";
 
 interface Restaurant {
@@ -41,9 +40,7 @@ export default async function FoodsPage({
 
   const fetchedRestaurants = await getRestaurants(searchQuery);
 
-  const cookieStore = await cookies();
-  const currentLang = cookieStore.get("NEXT_LOCALE")?.value || "en";
-  const t = dict[currentLang as keyof typeof dict];
+  const t = await getTranslations("Foods");
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
@@ -51,27 +48,27 @@ export default async function FoodsPage({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              🏪 {t.partnerRestaurants}
+              🏪 {t("partnerRestaurants")}
             </h1>
-            <p className="text-gray-600">{t.selectRestaurantDesc}</p>
+            <p className="text-gray-600">{t("selectRestaurantDesc")}</p>
           </div>
           <Link
             href="/orders"
             className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl text-sm transition-all shadow-sm"
           >
             <span>📦</span>
-            <span>{t.viewOrderHistory}</span>
+            <span>{t("viewOrderHistory")}</span>
           </Link>
         </div>
 
         <SearchBox
           initialQuery={searchQuery}
-          placeholder={t.searchRestaurants || "Tìm kiếm nhà hàng..."}
+          placeholder={t("searchRestaurants")}
         />
 
         {fetchedRestaurants.length === 0 ? (
           <div className="text-center py-12 text-gray-500 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            {t.noRestaurantsFound} &quot;{searchQuery}&quot;
+            {t("noRestaurantsFound")} &quot;{searchQuery}&quot;
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -97,7 +94,7 @@ export default async function FoodsPage({
                 </div>
                 <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
                   <span className="text-sm font-semibold text-rose-500 group-hover:underline">
-                    {t.viewMenu}
+                    {t("viewMenu")}
                   </span>
                 </div>
               </Link>

@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import AddToCartButton from "./AddToCartButton";
+import { useTranslations } from "next-intl";
 
 interface Dish {
   id: string;
@@ -14,10 +15,10 @@ interface Dish {
 }
 
 export default function CategoryDishList({ dishes }: { dishes: Dish[] }) {
+  const t = useTranslations("RestaurantDetail");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Tính toán số trang và cắt mảng dữ liệu cho trang hiện tại
   const totalPages = Math.ceil(dishes.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentDishes = dishes.slice(startIndex, startIndex + itemsPerPage);
@@ -42,7 +43,7 @@ export default function CategoryDishList({ dishes }: { dishes: Dish[] }) {
                 )}
               </div>
               <p className="text-gray-500 text-sm mt-1 line-clamp-2">
-                {dish.description || "Không có mô tả chi tiết."}
+                {dish.description || t("noDescription")}
               </p>
             </div>
             <div className="flex justify-between items-center pt-3 border-t border-gray-50">
@@ -55,7 +56,6 @@ export default function CategoryDishList({ dishes }: { dishes: Dish[] }) {
         ))}
       </div>
 
-      {/* Hiển thị thanh phân trang nếu danh mục này có số lượng món > 10 */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-3 pt-4 border-t border-gray-100">
           <button
@@ -63,19 +63,21 @@ export default function CategoryDishList({ dishes }: { dishes: Dish[] }) {
             disabled={currentPage === 1}
             className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors shadow-sm cursor-pointer"
           >
-            ← Trước
+            {t("prev")}
           </button>
-          
+
           <span className="text-sm font-medium text-gray-600 bg-gray-100 px-4 py-2 rounded-lg">
-            Trang {currentPage} / {totalPages}
+            {t("pageInfo", { current: currentPage, total: totalPages })}
           </span>
-          
+
           <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages}
             className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors shadow-sm cursor-pointer"
           >
-            Sau →
+            {t("next")}
           </button>
         </div>
       )}
