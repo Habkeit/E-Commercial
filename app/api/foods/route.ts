@@ -16,8 +16,8 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching dishes:", error);
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
-      { status: 500 },
+      { success: false, error: "Failed to fetch dishes" },
+      { status: 400 },
     );
   }
 }

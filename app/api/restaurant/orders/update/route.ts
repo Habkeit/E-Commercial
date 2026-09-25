@@ -27,6 +27,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true, message: "Order status updated successfully" });
   } catch (error) {
     console.error("Error updating order status:", error);
-    return NextResponse.json({ success: false, message: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Failed to update order status" }, { status: 400 });
   }
 }

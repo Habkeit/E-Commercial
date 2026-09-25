@@ -40,9 +40,9 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: "Internal Server Error",
+        error: "Failed to fetch dish details",
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }

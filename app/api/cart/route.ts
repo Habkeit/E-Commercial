@@ -66,8 +66,8 @@ export async function GET() {
   } catch (error) {
     console.error("Get cart error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal Error" },
-      { status: 500 },
+      { success: false, error: "Failed to retrieve cart" },
+      { status: 400 },
     );
   }
 }
@@ -144,8 +144,8 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Add to cart error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal Error" },
-      { status: 500 },
+      { success: false, error: "Failed to add item to cart" },
+      { status: 400 },
     );
   }
 }

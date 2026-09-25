@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     console.error("Lỗi API lấy danh mục:", error);
     return NextResponse.json(
       { success: false, message: "Lỗi máy chủ nội bộ" },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     console.error("Lỗi API tạo danh mục:", error);
     return NextResponse.json(
       { success: false, message: "Lỗi máy chủ nội bộ" },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }

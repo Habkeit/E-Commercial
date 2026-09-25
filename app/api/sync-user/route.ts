@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { uuidv7 } from "uuidv7";
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
       const [newUser] = await db
         .insert(users)
         .values({
+          id: uuidv7(),
           clerkId,
           email,
           fullName: fullName || "Anonymous",
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
     console.error("Error in sync-user API:", error);
     return NextResponse.json(
       { success: false, error: "Internal Server Error" },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }

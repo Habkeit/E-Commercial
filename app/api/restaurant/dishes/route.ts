@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     console.error("Error adding dish:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }

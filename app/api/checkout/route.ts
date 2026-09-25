@@ -97,8 +97,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Checkout error:", error);
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
-      { status: 500 },
+      { success: false, message: "Failed to place order" },
+      { status: 400 },
     );
   }
 }
