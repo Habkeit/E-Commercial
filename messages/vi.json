@@ -41,7 +41,12 @@
     "DeliveryAddress": "Địa chỉ giao hàng",
     "addressPlaceholder": "Nhập số nhà, tên đường, phường/xã...",
     "totalPayment": "Tổng thanh toán",
-    "confirmOrder": "Xác nhận đặt hàng 🚀"
+    "confirmOrder": "Xác nhận đặt hàng 🚀",
+    "province": "Tỉnh / Thành phố",
+    "district": "Quận / Huyện",
+    "ward": "Phường / Xã",
+    "streetDetails": "Số nhà, tên đường, tòa nhà...",
+    "fillAddress": "Vui lòng chọn và nhập đầy đủ địa chỉ!"
   },
   "RestaurantDashboard": {
     "restaurantDashboard": "Quản lý Nhà hàng",

@@ -41,7 +41,12 @@
     "DeliveryAddress": "Delivery Address",
     "addressPlaceholder": "Enter house number, street name, ward/district...",
     "totalPayment": "Total Payment",
-    "confirmOrder": "Confirm Order 🚀"
+    "confirmOrder": "Confirm Order 🚀",
+    "province": "Province / City",
+    "district": "District",
+    "ward": "Ward",
+    "streetDetails": "House number, street name...",
+    "fillAddress": "Please select and enter your full address!"
   },
   "RestaurantDashboard": {
     "restaurantDashboard": "Restaurant Dashboard",
