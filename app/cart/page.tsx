@@ -9,6 +9,7 @@ import { uuidv7 } from "uuidv7";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import CheckoutForm from "./CheckoutForm";
+import CartItemQuantity from "./CartItemQuantity";
 
 export default async function CartPage() {
   const { userId: clerkId } = await auth();
@@ -196,7 +197,7 @@ export default async function CartPage() {
 
     revalidatePath("/", "layout");
 
-    redirect("/orders");
+    return { success: true, message: "Order placed successfully" };
   }
 
   if (items.length === 0) {
@@ -242,47 +243,12 @@ export default async function CartPage() {
                   </div>
 
                   <div className="flex items-center space-x-3 self-end sm:self-auto">
-                    <form
-                      action={updateItemQuantity}
-                      className="flex items-center bg-gray-100 rounded-lg p-1"
-                    >
-                      <input type="hidden" name="cartId" value={item.cartId} />
-
-                      <button
-                        type="submit"
-                        name="action"
-                        value="decrease"
-                        className="w-8 h-8 flex items-center justify-center bg-white text-gray-600 rounded shadow-sm hover:bg-gray-50 transition-colors font-bold cursor-pointer"
-                      >
-                        -
-                      </button>
-
-                      <span className="w-10 text-center font-semibold text-sm text-gray-900">
-                        {item.quantity}
-                      </span>
-
-                      <button
-                        type="submit"
-                        name="action"
-                        value="increase"
-                        className="w-8 h-8 flex items-center justify-center bg-white text-gray-600 rounded shadow-sm hover:bg-gray-50 transition-colors font-bold cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </form>
-
-                    <form action={updateItemQuantity}>
-                      <input type="hidden" name="cartId" value={item.cartId} />
-                      <button
-                        type="submit"
-                        name="action"
-                        value="remove"
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
-                        title="Remove item"
-                      >
-                        🗑️
-                      </button>
-                    </form>
+                    {/* 2. Sử dụng Component Client mới để xử lý số lượng và gọi fetchCart */}
+                    <CartItemQuantity
+                      cartId={item.cartId}
+                      quantity={item.quantity}
+                      updateItemQuantity={updateItemQuantity}
+                    />
 
                     <div className="text-right min-w-[90px] hidden sm:block">
                       <span className="font-bold text-gray-900 block">

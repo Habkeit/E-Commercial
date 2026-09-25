@@ -4,6 +4,8 @@
 import { useState } from "react";
 import { message } from "antd";
 import { useTranslations } from "next-intl";
+import { useCartStore } from "@/app/store/cartStore";
+import { useRouter } from "next/navigation";
 
 interface CheckoutFormProps {
   handleCheckout: (
@@ -21,6 +23,9 @@ export default function CheckoutForm({
   const t = useTranslations("Cart");
   const [messageApi, contextHolder] = message.useMessage();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const clearCart = useCartStore((state) => state.clearCart);
+  
+  const router = useRouter();
 
   const onSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
@@ -30,6 +35,10 @@ export default function CheckoutForm({
     if (result && !result.success) {
       messageApi.error(result.message);
       setIsSubmitting(false);
+    } else {
+      clearCart();
+      router.push("/orders");
+      router.refresh();
     }
   };
 
@@ -80,7 +89,7 @@ export default function CheckoutForm({
             : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
         }`}
       >
-        {isSubmitting ? "Đang xử lý..." : t("confirmOrder")}
+        {isSubmitting ? t("processing", { fallback: "Đang xử lý..." }) : t("confirmOrder")}
       </button>
     </form>
   );
