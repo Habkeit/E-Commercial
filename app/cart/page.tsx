@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import CheckoutForm from "./CheckoutForm";
 import CartItemQuantity from "./CartItemQuantity";
+import { sendOrderConfirmation } from "@/app/utils/sendEmail";
 
 export default async function CartPage() {
   const { userId: clerkId } = await auth();
@@ -196,6 +197,14 @@ export default async function CartPage() {
     await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
 
     revalidatePath("/", "layout");
+
+    await sendOrderConfirmation(
+      currentUser.email,
+      currentUser.fullName || "Khách hàng",
+      newOrderId,
+      totalAmount.toString(),
+      `${address} - Phone: ${phoneNumber}`,
+    );
 
     return { success: true, message: "Order placed successfully" };
   }
