@@ -6,8 +6,6 @@ import Link from "next/link";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 
-// Import component LanguageSwitcher (đảm bảo đúng đường dẫn của bạn)
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getLocale, getTranslations } from "next-intl/server";
@@ -36,12 +34,9 @@ export default async function RootLayout({
           <NextIntlClientProvider messages={messages}>
             <Navbar />
 
-            {/* Đổi thành flex justify-between items-center để đẩy nút ngôn ngữ sang trái */}
-            <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-between items-center gap-4">
-              {/* Nút chuyển đổi ngôn ngữ */}
-              <LanguageSwitcher />
+            <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-end items-center gap-4">
+              
 
-              {/* Nhóm các nút quản lý nhà hàng nằm bên phải */}
               <div className="flex items-center gap-4">
                 <Link
                   href="/restaurant/dashboard"

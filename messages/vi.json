@@ -16,6 +16,20 @@
     "addedSuccess": "🎉 Thêm vào giỏ hàng thành công!",
     "addError": "❌ Thêm vào giỏ hàng thất bại. Vui lòng thử lại!"
   },
+  "Home": {
+    "badge": "Nền tảng đặt đồ ăn trực tuyến",
+    "titlePrefix": "Giao đồ ăn siêu tốc,",
+    "titleHighlight": "nóng hổi tới tận cửa!",
+    "description": "Khám phá thực đơn đa dạng từ cơm tấm, bánh mì, trà sữa cho đến các món ăn vặt yêu thích của bạn ngay hôm nay.",
+    "exploreBtn": "Khám phá thực đơn",
+    "cartBtn": "Xem giỏ hàng",
+    "statFlavorValue": "100%",
+    "statFlavorLabel": "Hương vị chuẩn",
+    "statDeliveryValue": "Siêu tốc",
+    "statDeliveryLabel": "Giao hàng đúng giờ",
+    "statSupportValue": "Hỗ trợ 24/7",
+    "statSupportLabel": "Phục vụ tận tâm"
+  },
   "Cart": {
     "ShoppingCart": "Giỏ hàng",
     "emptyCart": "Giỏ hàng của bạn đang trống",

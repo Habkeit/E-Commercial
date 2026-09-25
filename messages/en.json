@@ -16,6 +16,20 @@
     "addedSuccess": "🎉 Successfully added to cart!",
     "addError": "❌ Failed to add to cart. Please try again!"
   },
+  "Home": {
+    "badge": "Online Food Delivery Platform",
+    "titlePrefix": "Fast food delivery,",
+    "titleHighlight": "fresh to your door!",
+    "description": "Discover a diverse menu ranging from broken rice, banh mi, and milk tea to all your favorite fast foods today.",
+    "exploreBtn": "Explore Menu Now",
+    "cartBtn": "View Cart",
+    "statFlavorValue": "100%",
+    "statFlavorLabel": "Authentic flavor",
+    "statDeliveryValue": "Lightning Fast",
+    "statDeliveryLabel": "On-time delivery",
+    "statSupportValue": "24/7 Support",
+    "statSupportLabel": "Dedicated service"
+  },
   "Cart": {
     "ShoppingCart": "Shopping Cart",
     "emptyCart": "Your cart is empty",
