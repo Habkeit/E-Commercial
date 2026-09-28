@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 interface CheckoutFormProps {
   handleCheckout: (
     formData: FormData,
-  ) => Promise<{ success: boolean; message: string } | void>;
+  ) => Promise<{ success: boolean; message?: string; url?: string | null } | void>;
   defaultPhone: string;
   totalAmount: number;
 }
@@ -111,8 +111,11 @@ export default function CheckoutForm({
     const result = await handleCheckout(formData);
 
     if (result && !result.success) {
-      messageApi.error(result.message);
+      messageApi.error(result.message || "Đã xảy ra lỗi");
       setIsSubmitting(false);
+    } else if (result && result.success && result.url) {
+      clearCart();
+      window.location.href = result.url;
     } else {
       clearCart();
       router.push("/orders");
@@ -221,7 +224,7 @@ export default function CheckoutForm({
             : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
         }`}
       >
-        {isSubmitting ? t("processing", { fallback: "Đang xử lý..." }) : t("confirmOrder")}
+        {isSubmitting ? t("processing", { fallback: "Đang xử lý..." }) : t("confirmOrder", { fallback: "Thanh toán bằng thẻ" })}
       </button>
     </form>
   );

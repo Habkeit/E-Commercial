@@ -11,6 +11,11 @@ import { getTranslations } from "next-intl/server";
 import CheckoutForm from "./CheckoutForm";
 import CartItemQuantity from "./CartItemQuantity";
 import { sendOrderConfirmation } from "@/app/utils/sendEmail";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2026-08-26.dahlia", 
+});
 
 export default async function CartPage() {
   const { userId: clerkId } = await auth();
@@ -206,7 +211,29 @@ export default async function CartPage() {
       `${address} - Phone: ${phoneNumber}`,
     );
 
-    return { success: true, message: "Order placed successfully" };
+    const stripeLineItems = items.map((item) => ({
+      price_data: {
+        currency: "vnd",
+        product_data: {
+          name: item.dishName,
+        },
+        unit_amount: Number(item.dishPrice), 
+      },
+      quantity: item.quantity,
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: stripeLineItems,
+      mode: "payment",
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/orders?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?canceled=true`,
+      metadata: {
+        orderId: newOrderId, 
+      },
+    });
+
+    return { success: true, url: session.url };
   }
 
   if (items.length === 0) {
