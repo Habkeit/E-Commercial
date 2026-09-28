@@ -14,7 +14,7 @@ import { sendOrderConfirmation } from "@/app/utils/sendEmail";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-08-26.dahlia", 
+  apiVersion: "2026-08-26.dahlia",
 });
 
 export default async function CartPage() {
@@ -63,6 +63,7 @@ export default async function CartPage() {
       dishId: dishes.id,
       dishName: dishes.name,
       dishPrice: dishes.price,
+      stripePriceId: dishes.stripePriceId,
     })
     .from(cartItems)
     .innerJoin(dishes, eq(cartItems.dishId, dishes.id))
@@ -211,16 +212,35 @@ export default async function CartPage() {
       `${address} - Phone: ${phoneNumber}`,
     );
 
-    const stripeLineItems = items.map((item) => ({
-      price_data: {
-        currency: "vnd",
-        product_data: {
+    const stripeLineItems = [];
+
+    for (const item of items) {
+      let priceId = item.stripePriceId;
+
+      if (!priceId) {
+        const stripeProduct = await stripe.products.create({
           name: item.dishName,
-        },
-        unit_amount: Number(item.dishPrice), 
-      },
-      quantity: item.quantity,
-    }));
+        });
+
+        const stripePrice = await stripe.prices.create({
+          product: stripeProduct.id,
+          currency: "vnd",
+          unit_amount: Number(item.dishPrice),
+        });
+
+        priceId = stripePrice.id;
+
+        await db
+          .update(dishes)
+          .set({ stripePriceId: priceId })
+          .where(eq(dishes.id, item.dishId));
+      }
+
+      stripeLineItems.push({
+        price: priceId,
+        quantity: item.quantity,
+      });
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -229,7 +249,7 @@ export default async function CartPage() {
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/orders?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?canceled=true`,
       metadata: {
-        orderId: newOrderId, 
+        orderId: newOrderId,
       },
     });
 
@@ -279,7 +299,6 @@ export default async function CartPage() {
                   </div>
 
                   <div className="flex items-center space-x-3 self-end sm:self-auto">
-                    {/* 2. Sử dụng Component Client mới để xử lý số lượng và gọi fetchCart */}
                     <CartItemQuantity
                       cartId={item.cartId}
                       quantity={item.quantity}

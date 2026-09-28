@@ -68,6 +68,7 @@ export const dishes = pgTable("dishes", {
   stock: integer("stock").default(0).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   status: text("status").default("active").notNull(),
+  stripePriceId: text("stripe_price_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

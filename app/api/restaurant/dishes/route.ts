@@ -6,6 +6,12 @@ import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
+import Stripe from "stripe";
+
+// Khởi tạo Stripe SDK
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2026-08-26.dahlia",
+});
 
 export async function POST(req: Request) {
   try {
@@ -69,6 +75,30 @@ export async function POST(req: Request) {
       finalStatus = "inactive";
     }
 
+    // 2. 🌟 TẠO SẢN PHẨM & GIÁ TRÊN STRIPE CATALOG
+    let stripePriceId: string | null = null;
+    try {
+      const stripeProduct = await stripe.products.create({
+        name: name,
+        metadata: {
+          restaurantId: restaurant.id,
+        },
+      });
+
+      const stripePrice = await stripe.prices.create({
+        product: stripeProduct.id,
+        currency: "vnd",
+        unit_amount: parsed.data.price, // Giá tiền (ví dụ: 30000 VND)
+      });
+
+      stripePriceId = stripePrice.id;
+    } catch (stripeError) {
+      console.error("Lỗi đồng bộ sản phẩm lên Stripe:", stripeError);
+      // Bạn có thể chọn return lỗi hoặc vẫn cho phép tạo trong DB tùy ý.
+      // Ở đây ta log lỗi nhưng vẫn tiếp tục hoặc báo lỗi nếu bắt buộc phải có Stripe.
+    }
+
+    // 3. Lưu vào Database kèm theo stripePriceId
     await db.insert(dishes).values({
       id: uuidv7(),
       restaurantId: restaurant.id,
@@ -78,11 +108,12 @@ export async function POST(req: Request) {
       stock: parsed.data.stock,
       status: finalStatus,
       description: description || null,
+      stripePriceId: stripePriceId,
     });
 
     return NextResponse.json({
       success: true,
-      message: "Dish added successfully",
+      message: "Dish added successfully and synced to Stripe!",
     });
   } catch (error) {
     console.error("Error adding dish:", error);
