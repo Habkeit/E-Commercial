@@ -10,6 +10,11 @@ import { revalidatePath } from "next/cache";
 import DeleteConfirmButton from "@/components/DeleteConfirmButton";
 import DeleteRestaurantModal from "./DeleteRestaurantModal";
 import { z } from "zod";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2026-08-26.dahlia",
+});
 
 export default async function RestaurantDashboard({
   searchParams,
@@ -167,6 +172,47 @@ export default async function RestaurantDashboard({
       finalStatus = "inactive";
     }
 
+    const [existingDish] = await db
+      .select()
+      .from(dishes)
+      .where(eq(dishes.id, dishId));
+
+    let stripePriceId = existingDish?.stripePriceId;
+
+    try {
+      if (stripePriceId) {
+        const currentPriceObj = await stripe.prices.retrieve(stripePriceId);
+        const productId = currentPriceObj.product as string;
+
+        if (existingDish.name !== name) {
+          await stripe.products.update(productId, { name: name });
+        }
+
+        if (Number(existingDish.price) !== price) {
+          const newStripePrice = await stripe.prices.create({
+            product: productId,
+            currency: "vnd",
+            unit_amount: price,
+          });
+          stripePriceId = newStripePrice.id;
+        }
+
+        const isActive = finalStatus === "active" || finalStatus === "pre_order";
+        await stripe.products.update(productId, { active: isActive });
+
+      } else if (name && price >= 0) {
+        const stripeProduct = await stripe.products.create({ name: name });
+        const stripePrice = await stripe.prices.create({
+          product: stripeProduct.id,
+          currency: "vnd",
+          unit_amount: price,
+        });
+        stripePriceId = stripePrice.id;
+      }
+    } catch (error) {
+      console.error("Lỗi đồng bộ Stripe khi cập nhật món:", error);
+    }
+
     await db
       .update(dishes)
       .set({
@@ -176,6 +222,7 @@ export default async function RestaurantDashboard({
         stock: stock,
         status: finalStatus,
         description: description || null,
+        stripePriceId: stripePriceId,
       })
       .where(eq(dishes.id, dishId));
 
@@ -188,6 +235,22 @@ export default async function RestaurantDashboard({
 
     const dishId = formData.get("dishId") as string;
     if (!dishId) return;
+
+    const [dishToDelete] = await db
+      .select()
+      .from(dishes)
+      .where(eq(dishes.id, dishId));
+
+    if (dishToDelete && dishToDelete.stripePriceId) {
+      try {
+        const priceObj = await stripe.prices.retrieve(dishToDelete.stripePriceId);
+        const productId = priceObj.product as string;
+
+        await stripe.products.update(productId, { active: false });
+      } catch (error) {
+        console.error("Lỗi vô hiệu hóa sản phẩm trên Stripe khi xóa:", error);
+      }
+    }
 
     await db.delete(dishes).where(eq(dishes.id, dishId));
 
