@@ -1,58 +1,31 @@
 // app/cart/page.tsx
 import { db } from "@/db";
-import { cartItems, dishes, users, orders, orderItems } from "@/db/schema";
+import { cartItems, dishes } from "@/db/schema";
 import { auth, currentUser as getClerkUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { uuidv7 } from "uuidv7";
-import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import CheckoutForm from "./CheckoutForm";
 import CartItemQuantity from "./CartItemQuantity";
-import { sendOrderConfirmation } from "@/app/utils/sendEmail";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-08-26.dahlia",
-});
+import { getOrCreateUser } from "@/lib/services/user.service";
+import { handleCheckoutAction } from "@/app/actions/checkout";
+import { updateCartItemQuantityAction } from "@/app/actions/cart";
+import { APP_ROUTES } from "@/lib/constants";
 
 export default async function CartPage() {
   const { userId: clerkId } = await auth();
 
   if (!clerkId) {
-    redirect("/sign-in");
+    redirect(APP_ROUTES.SIGN_IN);
   }
 
-  const clerkUser = await getClerkUser();
+  const [clerkUser, currentUser] = await Promise.all([
+    getClerkUser(),
+    getOrCreateUser(clerkId),
+  ]);
+
   const defaultPhone = clerkUser?.phoneNumbers?.[0]?.phoneNumber || "";
-
-  let [currentUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.clerkId, clerkId));
-
-  if (!currentUser) {
-    const email =
-      clerkUser?.emailAddresses[0]?.emailAddress || "no-email@gmail.com";
-    const fullName =
-      `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
-      "User";
-
-    const newUserId = uuidv7();
-    await db.insert(users).values({
-      id: newUserId,
-      clerkId: clerkId,
-      email: email,
-      fullName: fullName,
-    });
-
-    [currentUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkId, clerkId));
-  }
-
   const t = await getTranslations("Cart");
 
   const items = await db
@@ -75,187 +48,6 @@ export default async function CartPage() {
     0,
   );
 
-  async function updateItemQuantity(formData: FormData) {
-    "use server";
-
-    const cartId = formData.get("cartId") as string;
-    const action = formData.get("action") as string;
-
-    const [item] = await db
-      .select()
-      .from(cartItems)
-      .where(eq(cartItems.id, cartId));
-
-    if (!item) return;
-
-    if (action === "remove") {
-      await db.delete(cartItems).where(eq(cartItems.id, cartId));
-    } else if (action === "increase") {
-      await db
-        .update(cartItems)
-        .set({ quantity: item.quantity + 1 })
-        .where(eq(cartItems.id, cartId));
-    } else if (action === "decrease") {
-      if (item.quantity > 1) {
-        await db
-          .update(cartItems)
-          .set({ quantity: item.quantity - 1 })
-          .where(eq(cartItems.id, cartId));
-      } else {
-        await db.delete(cartItems).where(eq(cartItems.id, cartId));
-      }
-    }
-
-    revalidatePath("/cart");
-  }
-
-  async function handleCheckout(formData: FormData) {
-    "use server";
-
-    const tAction = await getTranslations("Cart");
-
-    const phoneNumber = formData.get("phoneNumber") as string;
-    const address = formData.get("address") as string;
-
-    if (!phoneNumber || !address) {
-      return {
-        success: false,
-        message:
-          tAction("fillPhoneAndAddress") ||
-          "Please fill in both Phone Number and Address!",
-      };
-    }
-
-    if (items.length === 0) {
-      return {
-        success: false,
-        message: tAction("emptyCart"),
-      };
-    }
-
-    for (const item of items) {
-      const [currentDish] = await db
-        .select()
-        .from(dishes)
-        .where(eq(dishes.id, item.dishId));
-
-      if (!currentDish) {
-        return {
-          success: false,
-          message: `Dish "${item.dishName}" no longer exists on the system.`,
-        };
-      }
-
-      if (currentDish.stock < item.quantity) {
-        return {
-          success: false,
-          message: `Sorry! Dish "${item.dishName}" only has ${currentDish.stock} left.`,
-        };
-      }
-    }
-
-    const firstDishIdInCart = items[0].dishId;
-    const [firstDish] = await db
-      .select({ restaurantId: dishes.restaurantId })
-      .from(dishes)
-      .where(eq(dishes.id, firstDishIdInCart));
-
-    if (!firstDish || !firstDish.restaurantId) {
-      return {
-        success: false,
-        message: "Cannot determine restaurant for this order.",
-      };
-    }
-    const currentRestaurantId = firstDish.restaurantId;
-
-    const newOrderId = uuidv7();
-
-    await db.insert(orders).values({
-      id: newOrderId,
-      userId: currentUser.id,
-      restaurantId: currentRestaurantId,
-      totalAmount: totalAmount.toString(),
-      deliveryAddress: `${address} - Phone: ${phoneNumber}`,
-      status: "Pending",
-    });
-
-    for (const item of items) {
-      await db.insert(orderItems).values({
-        id: uuidv7(),
-        orderId: newOrderId,
-        dishId: item.dishId,
-        quantity: item.quantity,
-        price: item.dishPrice,
-        note: item.note,
-      });
-
-      const [dishToUpdate] = await db
-        .select()
-        .from(dishes)
-        .where(eq(dishes.id, item.dishId));
-      const newStock = dishToUpdate.stock - item.quantity;
-      await db
-        .update(dishes)
-        .set({ stock: newStock, isActive: newStock > 0 })
-        .where(eq(dishes.id, item.dishId));
-    }
-
-    await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
-
-    revalidatePath("/", "layout");
-
-    await sendOrderConfirmation(
-      currentUser.email,
-      currentUser.fullName || "Khách hàng",
-      newOrderId,
-      totalAmount.toString(),
-      `${address} - Phone: ${phoneNumber}`,
-    );
-
-    const stripeLineItems = [];
-
-    for (const item of items) {
-      let priceId = item.stripePriceId;
-
-      if (!priceId) {
-        const stripeProduct = await stripe.products.create({
-          name: item.dishName,
-        });
-
-        const stripePrice = await stripe.prices.create({
-          product: stripeProduct.id,
-          currency: "vnd",
-          unit_amount: Number(item.dishPrice),
-        });
-
-        priceId = stripePrice.id;
-
-        await db
-          .update(dishes)
-          .set({ stripePriceId: priceId })
-          .where(eq(dishes.id, item.dishId));
-      }
-
-      stripeLineItems.push({
-        price: priceId,
-        quantity: item.quantity,
-      });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: stripeLineItems,
-      mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/orders?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?canceled=true`,
-      metadata: {
-        orderId: newOrderId,
-      },
-    });
-
-    return { success: true, url: session.url };
-  }
-
   if (items.length === 0) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
@@ -265,7 +57,7 @@ export default async function CartPage() {
           </h2>
           <p className="text-gray-500 mb-6 text-sm">{t("emptyCartDesc")}</p>
           <Link
-            href="/foods"
+            href={APP_ROUTES.FOODS}
             className="inline-block bg-rose-500 hover:bg-rose-600 text-white font-medium px-6 py-3 rounded-xl transition-colors"
           >
             {t("exploreMenu")}
@@ -302,7 +94,7 @@ export default async function CartPage() {
                     <CartItemQuantity
                       cartId={item.cartId}
                       quantity={item.quantity}
-                      updateItemQuantity={updateItemQuantity}
+                      updateItemQuantity={updateCartItemQuantityAction}
                     />
 
                     <div className="text-right min-w-[90px] hidden sm:block">
@@ -326,7 +118,7 @@ export default async function CartPage() {
           </h2>
 
           <CheckoutForm
-            handleCheckout={handleCheckout}
+            handleCheckout={handleCheckoutAction}
             defaultPhone={defaultPhone}
             totalAmount={totalAmount}
           />

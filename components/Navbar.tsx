@@ -8,8 +8,12 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
+import { APP_ROUTES } from "@/lib/constants";
+
 export default function Navbar() {
-  const cart = useCartStore((state) => state.cart);
+  const totalItems = useCartStore((state) =>
+    state.cart.reduce((sum, item) => sum + item.quantity, 0),
+  );
   const fetchCart = useCartStore((state) => state.fetchCart);
 
   const t = useTranslations("Common");
@@ -18,11 +22,10 @@ export default function Navbar() {
     fetchCart();
   }, [fetchCart]);
 
-  const totalItems = cart?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   return (
     <header className="flex justify-between items-center px-8 py-4 bg-white border-b border-gray-100 sticky top-0 z-50">
-      <Link href="/" className="text-xl font-extrabold text-rose-600">
+      <Link href={APP_ROUTES.HOME} className="text-xl font-extrabold text-rose-600">
         🍔 FoodDelivery
       </Link>
 
@@ -30,7 +33,7 @@ export default function Navbar() {
         <LanguageSwitcher />
 
         <Link
-          href="/cart"
+          href={APP_ROUTES.CART}
           className="relative text-gray-700 hover:text-rose-600 font-medium text-sm flex items-center gap-1.5 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all"
         >
           <span>🛒 {t("cart")}</span>
@@ -42,7 +45,7 @@ export default function Navbar() {
         </Link>
 
         <Link
-          href="/orders"
+          href={APP_ROUTES.ORDERS}
           className="flex items-center gap-1.5 text-gray-600 hover:text-rose-600 font-medium text-sm transition-colors"
         >
           📦 {t("orders")}

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { message } from "antd";
-import { useTranslations } from "next-intl"; 
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 
 export default function RegisterRestaurantPage() {
@@ -169,11 +169,10 @@ export default function RegisterRestaurantPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 cursor-pointer ${
-              isSubmitting
+            className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 cursor-pointer ${isSubmitting
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-rose-500 hover:bg-rose-600"
-            }`}
+              }`}
           >
             {isSubmitting ? t("registering") : t("completeRegistration")}
           </button>

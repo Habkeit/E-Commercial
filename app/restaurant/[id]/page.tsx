@@ -1,43 +1,31 @@
 // app/restaurant/[id]/page.tsx
-import { db } from "@/db";
-import { restaurants, dishes, categories } from "@/db/schema";
-import { eq, asc, and, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import CategoryDishList from "./CategoryDishList"; 
+import CategoryDishList from "./CategoryDishList";
+import {
+  getRestaurantById,
+  getCategoriesByRestaurantId,
+  getPublicDishesByRestaurantId,
+} from "@/lib/services/restaurant.service";
+import { APP_ROUTES } from "@/lib/constants";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }> | { id: string };
 }
 
 export default async function RestaurantDetailPage({ params }: PageProps) {
   const { id } = await params;
-
-  const [restaurant] = await db
-    .select()
-    .from(restaurants)
-    .where(eq(restaurants.id, id));
+  const restaurant = await getRestaurantById(id);
 
   if (!restaurant) {
     notFound();
   }
 
-  const restaurantCategories = await db
-    .select()
-    .from(categories)
-    .where(eq(categories.restaurantId, id))
-    .orderBy(asc(categories.sortOrder));
-
-  const restaurantDishes = await db
-    .select()
-    .from(dishes)
-    .where(
-      and(
-        eq(dishes.restaurantId, id),
-        or(eq(dishes.status, "active"), eq(dishes.status, "pre_order")),
-      ),
-    );
+  const [restaurantCategories, restaurantDishes] = await Promise.all([
+    getCategoriesByRestaurantId(id),
+    getPublicDishesByRestaurantId(id),
+  ]);
 
   const tCommon = await getTranslations("Common");
   const tDetail = await getTranslations("RestaurantDetail");
@@ -47,20 +35,20 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <Link
-            href="/foods"
+            href={APP_ROUTES.FOODS}
             className="text-rose-600 font-medium hover:underline flex items-center gap-1"
           >
             ← {tCommon("backToMenu")}
           </Link>
           <div className="flex gap-3">
             <Link
-              href="/cart"
+              href={APP_ROUTES.CART}
               className="px-4 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl hover:bg-rose-700 transition-all shadow-sm flex items-center gap-2"
             >
               <span>🛒</span> {tCommon("cart")}
             </Link>
             <Link
-              href="/orders"
+              href={APP_ROUTES.ORDERS}
               className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-all shadow-sm"
             >
               📦 {tCommon("orders")}

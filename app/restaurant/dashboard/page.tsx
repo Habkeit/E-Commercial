@@ -1,27 +1,26 @@
 // app/restaurant/dashboard/page.tsx
-import { db } from "@/db";
-import { users, restaurants, dishes, categories, orders } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { revalidatePath } from "next/cache";
-import DeleteConfirmButton from "@/components/DeleteConfirmButton";
 import DeleteRestaurantModal from "./DeleteRestaurantModal";
-import { z } from "zod";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-08-26.dahlia",
-});
+import RestaurantEditForm from "./RestaurantEditForm";
+import DishEditForm from "./DishEditForm";
+import DishCard from "./DishCard";
+import {
+  getRestaurantByUserId,
+  getCategoriesByRestaurantId,
+  getDishesByRestaurantId,
+} from "@/lib/services/restaurant.service";
+import { deleteRestaurantAction } from "@/app/actions/restaurant";
+import { APP_ROUTES } from "@/lib/constants";
 
 export default async function RestaurantDashboard({
   searchParams,
 }: {
   searchParams:
-    | Promise<{ edit?: string; editDish?: string }>
-    | { edit?: string; editDish?: string };
+  | Promise<{ edit?: string; editDish?: string }>
+  | { edit?: string; editDish?: string };
 }) {
   const resolvedParams = await searchParams;
   const isEditing = resolvedParams?.edit === "true";
@@ -29,27 +28,15 @@ export default async function RestaurantDashboard({
 
   const { userId: clerkId } = await auth();
   if (!clerkId) {
-    redirect("/sign-in");
+    redirect(APP_ROUTES.SIGN_IN);
   }
 
-  const existingUsers = await db
-    .select()
-    .from(users)
-    .where(eq(users.clerkId, clerkId));
-  if (existingUsers.length === 0) {
-    redirect("/");
-  }
-  const currentUser = existingUsers[0];
-
-  const myRestaurants = await db
-    .select()
-    .from(restaurants)
-    .where(eq(restaurants.userId, clerkId));
+  const restaurant = await getRestaurantByUserId(clerkId);
 
   const t = await getTranslations("RestaurantDashboard");
   const tCommon = await getTranslations("Common");
 
-  if (myRestaurants.length === 0) {
+  if (!restaurant) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
@@ -58,7 +45,7 @@ export default async function RestaurantDashboard({
           </h1>
           <p className="text-gray-500 mb-6">{t("noRestaurantDesc")}</p>
           <Link
-            href="/"
+            href={APP_ROUTES.HOME}
             className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
           >
             {tCommon("backToHome")}
@@ -68,200 +55,15 @@ export default async function RestaurantDashboard({
     );
   }
 
-  const restaurant = myRestaurants[0];
+  const [allCategories, restaurantDishes] = await Promise.all([
+    getCategoriesByRestaurantId(restaurant.id),
+    getDishesByRestaurantId(restaurant.id),
+  ]);
 
-  const allCategories = await db
-    .select()
-    .from(categories)
-    .where(eq(categories.restaurantId, restaurant.id));
-
-  async function updateRestaurantInfo(formData: FormData) {
+  const handleDeleteRestaurant = async () => {
     "use server";
-
-    const name = formData.get("name") as string;
-    const houseNumber = formData.get("houseNumber") as string;
-    const street = formData.get("street") as string;
-    const ward = formData.get("ward") as string;
-    const province = formData.get("province") as string;
-
-    if (!name || !houseNumber || !street || !ward || !province) {
-      throw new Error("Please fill in all required fields!");
-    }
-
-    await db
-      .update(restaurants)
-      .set({ name, houseNumber, street, ward, province })
-      .where(eq(restaurants.id, restaurant.id));
-
-    revalidatePath("/restaurant/dashboard");
-    redirect("/restaurant/dashboard");
-  }
-
-  async function deleteRestaurantAction() {
-    "use server";
-
-    const tAction = await getTranslations("RestaurantDashboard");
-
-    const restaurantOrders = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.restaurantId, restaurant.id))
-      .limit(1);
-
-    if (restaurantOrders.length > 0) {
-      return {
-        success: false,
-        message: tAction("deleteErrorHasOrders"),
-      };
-    }
-
-    await db.delete(dishes).where(eq(dishes.restaurantId, restaurant.id));
-    await db
-      .delete(categories)
-      .where(eq(categories.restaurantId, restaurant.id));
-    await db.delete(restaurants).where(eq(restaurants.id, restaurant.id));
-
-    revalidatePath("/restaurant/dashboard");
-    return { success: true };
-  }
-
-  async function updateDishInfo(formData: FormData) {
-    "use server";
-
-    const dishId = formData.get("dishId") as string;
-    const name = formData.get("name") as string;
-    const categoryId = formData.get("categoryId") as string;
-    const status = formData.get("status") as string;
-    const description = formData.get("description") as string;
-
-    if (
-      !dishId ||
-      !name ||
-      !categoryId ||
-      !status ||
-      formData.get("stock") === null ||
-      formData.get("price") === null
-    ) {
-      throw new Error("Missing required fields");
-    }
-
-    const numberValidator = z.object({
-      price: z.coerce
-        .number()
-        .int("Invalid price. VND must be a positive integer without decimals.")
-        .min(0, "Invalid price. Cannot be negative."),
-      stock: z.coerce
-        .number()
-        .int("Stock must be an integer.")
-        .min(0, "Stock cannot be negative."),
-    });
-
-    const parsed = numberValidator.safeParse({
-      price: formData.get("price"),
-      stock: formData.get("stock"),
-    });
-
-    if (!parsed.success) {
-      throw new Error(parsed.error.issues[0].message);
-    }
-
-    const { price, stock } = parsed.data;
-
-    let finalStatus = status;
-    if (stock === 0 && status === "active") {
-      finalStatus = "inactive";
-    }
-
-    const [existingDish] = await db
-      .select()
-      .from(dishes)
-      .where(eq(dishes.id, dishId));
-
-    let stripePriceId = existingDish?.stripePriceId;
-
-    try {
-      if (stripePriceId) {
-        const currentPriceObj = await stripe.prices.retrieve(stripePriceId);
-        const productId = currentPriceObj.product as string;
-
-        if (existingDish.name !== name) {
-          await stripe.products.update(productId, { name: name });
-        }
-
-        if (Number(existingDish.price) !== price) {
-          const newStripePrice = await stripe.prices.create({
-            product: productId,
-            currency: "vnd",
-            unit_amount: price,
-          });
-          stripePriceId = newStripePrice.id;
-        }
-
-        const isActive = finalStatus === "active" || finalStatus === "pre_order";
-        await stripe.products.update(productId, { active: isActive });
-
-      } else if (name && price >= 0) {
-        const stripeProduct = await stripe.products.create({ name: name });
-        const stripePrice = await stripe.prices.create({
-          product: stripeProduct.id,
-          currency: "vnd",
-          unit_amount: price,
-        });
-        stripePriceId = stripePrice.id;
-      }
-    } catch (error) {
-      console.error("Lỗi đồng bộ Stripe khi cập nhật món:", error);
-    }
-
-    await db
-      .update(dishes)
-      .set({
-        name,
-        price: price.toString(),
-        categoryId,
-        stock: stock,
-        status: finalStatus,
-        description: description || null,
-        stripePriceId: stripePriceId,
-      })
-      .where(eq(dishes.id, dishId));
-
-    revalidatePath("/restaurant/dashboard");
-    redirect("/restaurant/dashboard");
-  }
-
-  async function deleteDish(formData: FormData) {
-    "use server";
-
-    const dishId = formData.get("dishId") as string;
-    if (!dishId) return;
-
-    const [dishToDelete] = await db
-      .select()
-      .from(dishes)
-      .where(eq(dishes.id, dishId));
-
-    if (dishToDelete && dishToDelete.stripePriceId) {
-      try {
-        const priceObj = await stripe.prices.retrieve(dishToDelete.stripePriceId);
-        const productId = priceObj.product as string;
-
-        await stripe.products.update(productId, { active: false });
-      } catch (error) {
-        console.error("Lỗi vô hiệu hóa sản phẩm trên Stripe khi xóa:", error);
-      }
-    }
-
-    await db.delete(dishes).where(eq(dishes.id, dishId));
-
-    revalidatePath("/restaurant/dashboard");
-  }
-
-  const restaurantDishes = await db
-    .select()
-    .from(dishes)
-    .where(eq(dishes.restaurantId, restaurant.id))
-    .orderBy(dishes.name);
+    return deleteRestaurantAction(restaurant.id);
+  };
 
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-6">
@@ -289,130 +91,44 @@ export default async function RestaurantDashboard({
               </Link>
             )}
             <Link
-              href="/restaurant/dishes/new"
+              href={APP_ROUTES.RESTAURANT_NEW_DISH}
               className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-rose-500/20"
             >
               {t("addNewDish")}
             </Link>
 
             <Link
-              href="/restaurant/categories/new"
+              href={APP_ROUTES.RESTAURANT_NEW_CATEGORY}
               className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-indigo-500/20"
             >
               📑 {t("addCategory")}
             </Link>
 
             <Link
-              href="/restaurant/orders"
+              href={APP_ROUTES.RESTAURANT_ORDERS}
               className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm shadow-md shadow-orange-500/20"
             >
               📦 {t("restaurantOrders")}
             </Link>
 
-            <DeleteRestaurantModal deleteAction={deleteRestaurantAction} />
+            <DeleteRestaurantModal deleteAction={handleDeleteRestaurant} />
           </div>
         </div>
 
         {isEditing && (
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-200 space-y-6 relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
-
-            <div className="flex justify-between items-center border-b pb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                {t("editRestaurantInfo")}
-              </h2>
-              <Link
-                href="?"
-                className="text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full"
-              >
-                ❌
-              </Link>
-            </div>
-
-            <form action={updateRestaurantInfo} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t("restaurantName")} <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  defaultValue={restaurant.name}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t("houseNumber")} <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="houseNumber"
-                    defaultValue={restaurant.houseNumber || ""}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t("street")} <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="street"
-                    defaultValue={restaurant.street}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t("ward")} <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="ward"
-                    defaultValue={restaurant.ward || ""}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t("cityProvince")} <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="province"
-                    defaultValue={restaurant.province}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 flex items-center gap-3">
-                <button
-                  type="submit"
-                  className="bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm shadow-sm cursor-pointer"
-                >
-                  {t("saveChanges")}
-                </button>
-                <Link
-                  href="?"
-                  className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm shadow-sm flex items-center"
-                >
-                  {t("cancelBtn")}
-                </Link>
-              </div>
-            </form>
-          </div>
+          <RestaurantEditForm
+            restaurant={restaurant}
+            labels={{
+              editRestaurantInfo: t("editRestaurantInfo"),
+              restaurantName: t("restaurantName"),
+              houseNumber: t("houseNumber"),
+              street: t("street"),
+              ward: t("ward"),
+              cityProvince: t("cityProvince"),
+              saveChanges: t("saveChanges"),
+              cancelBtn: t("cancelBtn"),
+            }}
+          />
         )}
 
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-6">
@@ -429,191 +145,38 @@ export default async function RestaurantDashboard({
 
                 if (isEditingThisDish) {
                   return (
-                    <div
+                    <DishEditForm
                       key={dish.id}
-                      className="border-2 border-rose-400 bg-rose-50/30 p-5 rounded-xl flex flex-col justify-between shadow-sm animate-in fade-in"
-                    >
-                      <form action={updateDishInfo} className="space-y-3">
-                        <input type="hidden" name="dishId" value={dish.id} />
-
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            {t("dishNameLabel")}{" "}
-                            <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="name"
-                            defaultValue={dish.name}
-                            required
-                            className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">
-                              {t("dishPriceLabel")}{" "}
-                              <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              name="price"
-                              defaultValue={dish.price}
-                              min="0"
-                              step="1"
-                              required
-                              className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">
-                              {t("stock")}{" "}
-                              <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              name="stock"
-                              defaultValue={dish.stock ?? 0}
-                              min="0"
-                              step="1"
-                              required
-                              className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            {t("status")}{" "}
-                            <span className="text-rose-500">*</span>
-                          </label>
-                          <select
-                            name="status"
-                            defaultValue={dish.status || "active"}
-                            required
-                            className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
-                          >
-                            <option value="active">🟢 Active</option>
-                            <option value="pre_order">⏳ Pre-order</option>
-                            <option value="inactive">🔴 Inactive</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            {t("category")}{" "}
-                            <span className="text-rose-500">*</span>
-                          </label>
-                          <select
-                            name="categoryId"
-                            defaultValue={dish.categoryId || ""}
-                            required
-                            className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
-                          >
-                            <option value="" disabled>
-                              {t("selectCategory")}
-                            </option>
-                            {allCategories.map((cat) => (
-                              <option key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            {t("dishDescLabel")}
-                          </label>
-                          <textarea
-                            name="description"
-                            defaultValue={dish.description || ""}
-                            rows={2}
-                            className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white resize-none text-gray-900"
-                          ></textarea>
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                          <button
-                            type="submit"
-                            className="flex-1 bg-rose-500 hover:bg-rose-600 text-white py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
-                          >
-                            {t("saveChanges")}
-                          </button>
-                          <Link
-                            href="?"
-                            className="flex-1 bg-white hover:bg-gray-50 border text-center text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors block"
-                          >
-                            {t("cancelBtn")}
-                          </Link>
-                        </div>
-                      </form>
-                    </div>
+                      dish={dish}
+                      categories={allCategories}
+                      labels={{
+                        dishNameLabel: t("dishNameLabel"),
+                        dishPriceLabel: t("dishPriceLabel"),
+                        stock: t("stock"),
+                        status: t("status"),
+                        category: t("category"),
+                        selectCategory: t("selectCategory"),
+                        dishDescLabel: t("dishDescLabel"),
+                        saveChanges: t("saveChanges"),
+                        cancelBtn: t("cancelBtn"),
+                      }}
+                    />
                   );
                 }
 
                 return (
-                  <div
+                  <DishCard
                     key={dish.id}
-                    className="border border-gray-100 bg-gray-50/50 p-5 rounded-xl flex flex-col justify-between relative group hover:border-rose-200 transition-colors"
-                  >
-                    <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full shadow-sm p-1 border border-gray-100 z-10">
-                      <Link
-                        href={`?editDish=${dish.id}`}
-                        className="text-gray-400 hover:text-rose-600 p-1 rounded-full transition-colors"
-                        title={t("editBtn")}
-                      >
-                        ✏️
-                      </Link>
-
-                      <form action={deleteDish}>
-                        <input type="hidden" name="dishId" value={dish.id} />
-                        <DeleteConfirmButton
-                          confirmMessage={t("deleteDishConfirm")}
-                          className="text-gray-400 hover:text-red-600 p-1 rounded-full transition-colors cursor-pointer"
-                          title={t("deleteDishTitle")}
-                        >
-                          🗑️
-                        </DeleteConfirmButton>
-                      </form>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-lg pr-16">
-                        {dish.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                        {dish.description || t("noDescription")}
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-gray-200/60 flex justify-between items-center">
-                      <span className="font-extrabold text-rose-600">
-                        {Number(dish.price).toLocaleString("en-US")} VND
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded-md">
-                          {t("stock")}: {dish.stock ?? 0}
-                        </span>
-
-                        <span
-                          className={`text-xs font-medium px-2.5 py-1 rounded-lg ${
-                            dish.status === "pre_order"
-                              ? "bg-amber-100 text-amber-700"
-                              : dish.status === "inactive"
-                                ? "bg-gray-200 text-gray-700"
-                                : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {dish.status === "pre_order"
-                            ? "⏳ Pre-order"
-                            : dish.status === "inactive"
-                              ? "🔴 Inactive"
-                              : t("activeStatus")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    dish={dish}
+                    labels={{
+                      editBtn: t("editBtn"),
+                      deleteDishConfirm: t("deleteDishConfirm"),
+                      deleteDishTitle: t("deleteDishTitle"),
+                      noDescription: t("noDescription"),
+                      stock: t("stock"),
+                      activeStatus: t("activeStatus"),
+                    }}
+                  />
                 );
               })}
             </div>

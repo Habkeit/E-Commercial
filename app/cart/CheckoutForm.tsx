@@ -6,8 +6,10 @@ import { message } from "antd";
 import { useTranslations } from "next-intl";
 import { useCartStore } from "@/app/store/cartStore";
 import { useRouter } from "next/navigation";
+import { APP_ROUTES } from "@/lib/constants";
 
 interface CheckoutFormProps {
+
   handleCheckout: (
     formData: FormData,
   ) => Promise<{ success: boolean; message?: string; url?: string | null } | void>;
@@ -29,7 +31,7 @@ export default function CheckoutForm({
   const [messageApi, contextHolder] = message.useMessage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clearCart = useCartStore((state) => state.clearCart);
-  
+
   const router = useRouter();
 
   // State lưu danh sách API
@@ -118,7 +120,7 @@ export default function CheckoutForm({
       window.location.href = result.url;
     } else {
       clearCart();
-      router.push("/orders");
+      router.push(APP_ROUTES.ORDERS);
       router.refresh();
     }
   };
@@ -218,11 +220,10 @@ export default function CheckoutForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg cursor-pointer ${
-          isSubmitting
+        className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg cursor-pointer ${isSubmitting
             ? "bg-gray-400 cursor-not-allowed"
             : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
-        }`}
+          }`}
       >
         {isSubmitting ? t("processing", { fallback: "Đang xử lý..." }) : t("confirmOrder", { fallback: "Thanh toán bằng thẻ" })}
       </button>
