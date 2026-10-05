@@ -125,7 +125,8 @@
     "statusPending": "Pending",
     "statusDelivering": "Delivering",
     "statusCompleted": "Completed",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "statusConfirmed": "Confirmed"
   },
   "RestaurantDetail": {
     "noDescription": "No detailed description provided.",

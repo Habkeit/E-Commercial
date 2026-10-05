@@ -10,7 +10,6 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import CheckoutForm from "./CheckoutForm";
 import CartItemQuantity from "./CartItemQuantity";
-import { sendOrderConfirmation } from "@/app/utils/sendEmail";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -188,29 +187,7 @@ export default async function CartPage() {
         price: item.dishPrice,
         note: item.note,
       });
-
-      const [dishToUpdate] = await db
-        .select()
-        .from(dishes)
-        .where(eq(dishes.id, item.dishId));
-      const newStock = dishToUpdate.stock - item.quantity;
-      await db
-        .update(dishes)
-        .set({ stock: newStock, isActive: newStock > 0 })
-        .where(eq(dishes.id, item.dishId));
     }
-
-    await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
-
-    revalidatePath("/", "layout");
-
-    await sendOrderConfirmation(
-      currentUser.email,
-      currentUser.fullName || "Khách hàng",
-      newOrderId,
-      totalAmount.toString(),
-      `${address} - Phone: ${phoneNumber}`,
-    );
 
     const stripeLineItems = [];
 
@@ -250,6 +227,7 @@ export default async function CartPage() {
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cart?canceled=true`,
       metadata: {
         orderId: newOrderId,
+        userId: currentUser.id,
       },
     });
 

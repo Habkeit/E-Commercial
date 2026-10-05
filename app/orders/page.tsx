@@ -6,6 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
+import RetryPaymentButton from "./RetryPaymentButton";
 
 type Order = typeof orders.$inferSelect;
 
@@ -21,6 +22,7 @@ export default async function OrdersPage() {
   const locale = await getLocale();
 
   let myOrders: Order[] = [];
+  let currentUser = null;
 
   const existingUsers = await db
     .select()
@@ -28,7 +30,7 @@ export default async function OrdersPage() {
     .where(eq(users.clerkId, clerkId));
 
   if (existingUsers.length > 0) {
-    const currentUser = existingUsers[0];
+    currentUser = existingUsers[0];
 
     myOrders = await db
       .select()
@@ -79,7 +81,7 @@ export default async function OrdersPage() {
                   </p>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right w-full sm:w-auto flex flex-col items-end">
                   <p className="text-xl font-bold text-rose-600">
                     {Number(order.totalAmount).toLocaleString()} VND
                   </p>
@@ -87,21 +89,29 @@ export default async function OrdersPage() {
                     className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
                       order.status === "Pending"
                         ? "bg-yellow-100 text-yellow-700"
-                        : order.status === "Delivering"
+                        : order.status === "Confirmed"
                           ? "bg-blue-100 text-blue-700"
-                          : order.status === "Completed"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
+                          : order.status === "Delivering"
+                            ? "bg-purple-100 text-purple-700"
+                            : order.status === "Completed"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
                     }`}
                   >
                     {order.status === "Pending" && t("statusPending")}
+                    {order.status === "Confirmed" &&
+                      (t("statusConfirmed") || "Đã xác nhận")}
                     {order.status === "Delivering" && t("statusDelivering")}
                     {order.status === "Completed" && t("statusCompleted")}
-                    {order.status !== "Pending" &&
-                      order.status !== "Delivering" &&
-                      order.status !== "Completed" &&
-                      t("statusCancelled")}
+                    {order.status === "Canceled" && t("statusCancelled")}
                   </span>
+
+                  {order.status === "Pending" && currentUser && (
+                    <RetryPaymentButton
+                      orderId={order.id}
+                      userId={currentUser.id}
+                    />
+                  )}
                 </div>
               </div>
             ))}

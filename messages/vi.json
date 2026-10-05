@@ -125,7 +125,8 @@
     "statusPending": "Chờ xử lý",
     "statusDelivering": "Đang giao",
     "statusCompleted": "Hoàn tất",
-    "statusCancelled": "Đã hủy"
+    "statusCancelled": "Đã hủy",
+    "statusConfirmed": "Đã xác nhận"
   },
   "RestaurantDetail": {
     "noDescription": "Không có mô tả chi tiết.",
