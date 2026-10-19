@@ -1,17 +1,13 @@
 // app/api/restaurant/dishes/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { restaurants, dishes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { dishes } from "@/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { uuidv7 } from "uuidv7";
 import { z } from "zod";
-import Stripe from "stripe";
-
-// Khởi tạo Stripe SDK
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-08-26.dahlia",
-});
+import { DISH_STATUS, type DishStatus } from "@/lib/constants";
+import { createProductAndPrice } from "@/lib/services/stripe.service";
+import { getRestaurantByUserId } from "@/lib/services/restaurant.service";
 
 export async function POST(req: Request) {
   try {
@@ -23,19 +19,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // Đồng bộ cách truy vấn nhà hàng bằng clerkId chuẩn text giống Dashboard
-    const myRestaurants = await db
-      .select()
-      .from(restaurants)
-      .where(eq(restaurants.userId, clerkId));
-
-    if (myRestaurants.length === 0) {
+    const restaurant = await getRestaurantByUserId(clerkId);
+    if (!restaurant) {
       return NextResponse.json(
         { success: false, message: "Restaurant not found for this user" },
         { status: 404 },
       );
     }
-    const restaurant = myRestaurants[0];
 
     const body = await req.json();
     const { name, price, stock, categoryId, status, description } = body;
@@ -53,13 +43,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate dữ liệu số bằng Zod tương tự phần update
     const dishValidator = z.object({
-      price: z.number().min(0, "Giá tiền không được âm"),
+      price: z.number().min(0, "Price cannot be negative"),
       stock: z
         .number()
-        .int("Kho hàng phải là số nguyên")
-        .min(0, "Kho hàng không được âm"),
+        .int("Stock must be an integer")
+        .min(0, "Stock cannot be negative"),
     });
 
     const parsed = dishValidator.safeParse({ price, stock });
@@ -70,35 +59,25 @@ export async function POST(req: Request) {
       );
     }
 
-    let finalStatus = status;
-    if (parsed.data.stock === 0 && status === "active") {
-      finalStatus = "inactive";
+    let finalStatus: DishStatus = status;
+    if (parsed.data.stock === 0 && status === DISH_STATUS.ACTIVE) {
+      finalStatus = DISH_STATUS.INACTIVE;
     }
 
-    // 2. 🌟 TẠO SẢN PHẨM & GIÁ TRÊN STRIPE CATALOG
+    // Provision Stripe Product & Price via centralized service
     let stripePriceId: string | null = null;
     try {
-      const stripeProduct = await stripe.products.create({
-        name: name,
-        metadata: {
-          restaurantId: restaurant.id,
-        },
-      });
-
-      const stripePrice = await stripe.prices.create({
-        product: stripeProduct.id,
-        currency: "vnd",
-        unit_amount: parsed.data.price, // Giá tiền (ví dụ: 30000 VND)
-      });
-
-      stripePriceId = stripePrice.id;
+      const stripeResult = await createProductAndPrice(
+        name,
+        parsed.data.price,
+        { restaurantId: restaurant.id },
+      );
+      stripePriceId = stripeResult.stripePriceId;
     } catch (stripeError) {
-      console.error("Lỗi đồng bộ sản phẩm lên Stripe:", stripeError);
-      // Bạn có thể chọn return lỗi hoặc vẫn cho phép tạo trong DB tùy ý.
-      // Ở đây ta log lỗi nhưng vẫn tiếp tục hoặc báo lỗi nếu bắt buộc phải có Stripe.
+      console.error("Error syncing product to Stripe:", stripeError);
     }
 
-    // 3. Lưu vào Database kèm theo stripePriceId
+    // Persist to local database
     await db.insert(dishes).values({
       id: uuidv7(),
       restaurantId: restaurant.id,
@@ -108,7 +87,7 @@ export async function POST(req: Request) {
       stock: parsed.data.stock,
       status: finalStatus,
       description: description || null,
-      stripePriceId: stripePriceId,
+      stripePriceId,
     });
 
     return NextResponse.json({

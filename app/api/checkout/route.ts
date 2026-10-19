@@ -1,15 +1,14 @@
 // app/api/checkout/route.ts
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { users, orders, orderItems } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
-import { randomUUID } from "crypto";
+import { findUserByClerkId } from "@/lib/services/user.service";
+import { createOrderWithItems } from "@/lib/services/order.service";
 
 interface CartItem {
   dishId: string;
   price: number;
   quantity: number;
+  note?: string;
 }
 
 export async function POST(request: Request) {
@@ -26,7 +25,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 👇 Bổ sung lấy restaurantId từ request.json()
     const { cart, deliveryAddress, restaurantId } = await request.json();
 
     if (!cart || cart.length === 0) {
@@ -36,7 +34,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 👇 Kiểm tra thêm xem có restaurantId không
     if (!restaurantId) {
       return NextResponse.json(
         { success: false, message: "Restaurant ID is missing" },
@@ -44,12 +41,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const existingUsers = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkId, clerkId));
+    const currentUser = await findUserByClerkId(clerkId);
 
-    if (existingUsers.length === 0) {
+    if (!currentUser) {
       return NextResponse.json(
         {
           success: false,
@@ -59,33 +53,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const currentUser = existingUsers[0];
-
     const totalAmount = cart.reduce(
       (total: number, item: CartItem) => total + item.price * item.quantity,
       0,
     );
 
-    const newOrderId = randomUUID();
-
-    await db.insert(orders).values({
-      id: newOrderId,
-      userId: currentUser.id,
-      restaurantId: restaurantId, // 👈 Truyền restaurantId vào đây
-      totalAmount: totalAmount.toString(),
+    const newOrderId = await createOrderWithItems(
+      currentUser.id,
+      restaurantId,
+      totalAmount,
       deliveryAddress,
-      status: "Pending",
-    });
-
-    const orderItemsData = cart.map((item: CartItem) => ({
-      id: randomUUID(),
-      orderId: newOrderId,
-      dishId: item.dishId,
-      quantity: item.quantity,
-      price: item.price.toString(),
-    }));
-
-    await db.insert(orderItems).values(orderItemsData);
+      cart.map((item: CartItem) => ({
+        dishId: item.dishId,
+        quantity: item.quantity,
+        price: item.price.toString(),
+        note: item.note,
+      })),
+    );
 
     return NextResponse.json(
       {

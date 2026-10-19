@@ -12,6 +12,8 @@ import { getMessages, getLocale, getTranslations } from "next-intl/server";
 
 const inter = Inter({ subsets: ["latin"] });
 
+import { APP_ROUTES } from "@/lib/constants";
+
 export const metadata: Metadata = {
   title: "Food Delivery App",
   description: "Order your favorite food online easily and quickly.",
@@ -35,17 +37,15 @@ export default async function RootLayout({
             <Navbar />
 
             <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-end items-center gap-4">
-              
-
               <div className="flex items-center gap-4">
                 <Link
-                  href="/restaurant/dashboard"
+                  href={APP_ROUTES.RESTAURANT_DASHBOARD}
                   className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
                 >
                   🏪 {t("restaurantDashboard")}
                 </Link>
                 <Link
-                  href="/restaurant/register"
+                  href={APP_ROUTES.RESTAURANT_REGISTER}
                   className="text-sm font-medium text-gray-700 hover:text-rose-500 transition-colors"
                 >
                   {t("restaurantRegister")} 🏪
@@ -60,3 +60,4 @@ export default async function RootLayout({
     </ClerkProvider>
   );
 }
+

@@ -1,48 +1,25 @@
 // app/api/restaurant/register/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { users, restaurants } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { restaurants } from "@/db/schema";
+import { auth } from "@clerk/nextjs/server";
 import { uuidv7 } from "uuidv7";
+import { getOrCreateUser } from "@/lib/services/user.service";
 
 export async function POST(req: Request) {
   try {
     const { userId: clerkId } = await auth();
-    const user = await currentUser();
 
-    if (!clerkId || !user) {
+    if (!clerkId) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    // 1. Kiểm tra xem user đã có trong bảng users chưa, nếu chưa thì tự động đồng bộ vào
-    const dbUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkId, clerkId));
-    let currentUserId: string;
+    // Automatically ensure user is synced
+    await getOrCreateUser(clerkId);
 
-    if (dbUser.length === 0) {
-      const newUserId = uuidv7();
-      const email = user.emailAddresses[0]?.emailAddress || "";
-      const name =
-        `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User";
-
-      await db.insert(users).values({
-        id: newUserId,
-        clerkId: clerkId,
-        email: email,
-        fullName: name,
-      });
-      currentUserId = newUserId;
-    } else {
-      currentUserId = dbUser[0].id;
-    }
-
-    // 2. Lấy dữ liệu từ form gửi lên
     const body = await req.json();
     const { name, houseNumber, street, ward, province } = body;
 

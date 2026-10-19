@@ -5,15 +5,16 @@ import { useState } from "react";
 import { retryCheckoutAction } from "@/app/actions/payment";
 import { InferSelectModel } from "drizzle-orm";
 import { orders } from "@/db/schema";
+import { ORDER_STATUS } from "@/lib/constants";
 
 type Order = InferSelectModel<typeof orders>;
 
-export default function OrderCard({ 
-  order, 
-  userId 
-}: { 
-  order: Order; 
-  userId: string 
+export default function OrderCard({
+  order,
+  userId,
+}: {
+  order: Order;
+  userId: string;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +35,7 @@ export default function OrderCard({
       <h3 className="font-bold">Mã đơn: {order.id}</h3>
       <p className="text-gray-600">Trạng thái: {order.status}</p>
 
-      {order.status === "Pending" && (
+      {order.status === ORDER_STATUS.PENDING && (
         <button
           onClick={handleRetryPayment}
           disabled={loading}

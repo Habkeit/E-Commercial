@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { dishes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { getDishByIdWithRestaurant } from "@/lib/services/dish.service";
 
 export async function GET(
   request: Request,
@@ -9,14 +7,7 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
-    const dishId = resolvedParams.id;
-
-    const dish = await db.query.dishes.findFirst({
-      where: eq(dishes.id, dishId),
-      with: {
-        restaurant: true,
-      },
-    });
+    const dish = await getDishByIdWithRestaurant(resolvedParams.id);
 
     if (!dish) {
       return NextResponse.json(

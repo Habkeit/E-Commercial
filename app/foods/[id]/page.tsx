@@ -1,20 +1,7 @@
 // app/foods/[id]/page.tsx
 import { notFound } from "next/navigation";
 import AddToCartButton from "./AddToCartButton";
-
-async function getDishDetail(id: string) {
-  try {
-    const res = await fetch(`http://localhost:3000/api/foods/${id}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json.success ? json.data : null;
-  } catch (error) {
-    console.error("Error fetching dish detail API:", error);
-    return null;
-  }
-}
+import { getDishByIdWithRestaurant } from "@/lib/services/dish.service";
 
 export default async function DishDetailPage({
   params,
@@ -22,23 +9,23 @@ export default async function DishDetailPage({
   params: Promise<{ id: string }> | { id: string };
 }) {
   const resolvedParams = await params;
-  const dish = await getDishDetail(resolvedParams.id);
+  const dish = await getDishByIdWithRestaurant(resolvedParams.id);
 
   if (!dish) {
     notFound();
   }
 
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return "N/A";
+  const formatTime = (time?: Date | string | null) => {
+    if (!time) return "N/A";
     try {
-      const date = new Date(timeString);
+      const date = typeof time === "string" ? new Date(time) : time;
       return date.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
       });
     } catch {
-      return timeString;
+      return String(time);
     }
   };
 

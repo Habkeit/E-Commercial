@@ -1,47 +1,18 @@
 // app/api/cart/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { cartItems, users, dishes, restaurants } from "@/db/schema";
-import { eq, and, sql} from "drizzle-orm";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { cartItems, dishes, restaurants } from "@/db/schema";
+import { eq, and, sql } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
 import { uuidv7 } from "uuidv7";
+import { getOrCreateUser } from "@/lib/services/user.service";
 
 export async function GET() {
   try {
     const { userId: clerkId } = await auth();
     if (!clerkId) return NextResponse.json({ success: true, cart: [] });
 
-    // Đảm bảo user đã tồn tại trong bảng users (sync tự động)
-    let userRecord = await db.query.users.findFirst({
-      where: eq(users.clerkId, clerkId),
-    });
-
-    if (!userRecord) {
-      const clerkUser = await currentUser();
-      const newUserId = uuidv7();
-      const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
-      const name =
-        `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
-        "User";
-
-      await db.insert(users).values({
-        id: newUserId,
-        clerkId: clerkId,
-        email: email,
-        fullName: name,
-      });
-
-      userRecord = {
-        id: newUserId,
-        clerkId: clerkId,
-        email: email,
-        fullName: name,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    }
-
-    const currentUserId = String(userRecord.id);
+    const currentUser = await getOrCreateUser(clerkId);
 
     const items = await db
       .select({
@@ -54,8 +25,11 @@ export async function GET() {
       })
       .from(cartItems)
       .innerJoin(dishes, eq(cartItems.dishId, dishes.id))
-      .innerJoin(restaurants, sql`${dishes.restaurantId}::uuid = ${restaurants.id}`) 
-      .where(eq(cartItems.userId, currentUserId));
+      .innerJoin(
+        restaurants,
+        sql`${dishes.restaurantId}::uuid = ${restaurants.id}`,
+      )
+      .where(eq(cartItems.userId, currentUser.id));
 
     const formattedCart = items.map((i) => ({
       ...i,
@@ -75,50 +49,21 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { userId: clerkId } = await auth();
-    if (!clerkId)
+    if (!clerkId) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 },
       );
-
-    const { dishId, quantity, note } = await req.json();
-
-    let userRecord = await db.query.users.findFirst({
-      where: eq(users.clerkId, clerkId),
-    });
-
-    if (!userRecord) {
-      const clerkUser = await currentUser();
-      const newUserId = uuidv7();
-      const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
-      const name =
-        `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
-        "User";
-
-      await db.insert(users).values({
-        id: newUserId,
-        clerkId: clerkId,
-        email: email,
-        fullName: name,
-      });
-
-      // 👇 CHÍNH LÀ ĐOẠN NÀY: Bạn phải gán lại dữ liệu thì ESLint mới thấy 
-      // từ khóa "let" có tác dụng, và TypeScript mới biết userRecord đã có ID
-      userRecord = {
-        id: newUserId,
-        clerkId: clerkId,
-        email: email,
-        fullName: name,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
     }
 
-    const currentUserId = String(userRecord.id);
+    const { dishId, quantity, note } = await req.json();
+    const currentUser = await getOrCreateUser(clerkId);
 
-    // 💡 Kiểm tra item trong giỏ bằng clerkId
     const existingItem = await db.query.cartItems.findFirst({
-      where: and(eq(cartItems.userId, currentUserId), eq(cartItems.dishId, dishId)),
+      where: and(
+        eq(cartItems.userId, currentUser.id),
+        eq(cartItems.dishId, dishId),
+      ),
     });
 
     if (existingItem) {
@@ -133,7 +78,7 @@ export async function POST(req: Request) {
     } else {
       await db.insert(cartItems).values({
         id: uuidv7(),
-        userId: clerkId, // 💡 Lưu trực tiếp clerkId vào bảng cart_items
+        userId: currentUser.id,
         dishId,
         quantity,
         note,
@@ -145,6 +90,44 @@ export async function POST(req: Request) {
     console.error("Add to cart error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to add item to cart" },
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const url = new URL(req.url);
+    const dishId = url.searchParams.get("dishId");
+
+    const currentUser = await getOrCreateUser(clerkId);
+
+    if (dishId) {
+      await db
+        .delete(cartItems)
+        .where(
+          and(
+            eq(cartItems.userId, currentUser.id),
+            eq(cartItems.dishId, dishId),
+          ),
+        );
+    } else {
+      await db.delete(cartItems).where(eq(cartItems.userId, currentUser.id));
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete cart error:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to delete item from cart" },
       { status: 400 },
     );
   }

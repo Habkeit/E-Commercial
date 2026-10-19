@@ -1,47 +1,36 @@
 "use server";
 
-import { db } from "@/db";
-import { orderItems, dishes, orders } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-08-26.dahlia",
-});
+import { getOrderItemsWithDishes } from "@/lib/services/order.service";
+import {
+  ensureStripePriceId,
+  createCheckoutSession,
+} from "@/lib/services/stripe.service";
+import { updateStripePriceIds } from "@/lib/services/dish.service";
 
 export async function retryCheckoutAction(orderId: string, userId: string) {
   try {
-    const itemsInOrder = await db
-      .select({
-        dishName: dishes.name,
-        dishPrice: orderItems.price,
-        quantity: orderItems.quantity,
-        stripePriceId: dishes.stripePriceId,
-        dishId: dishes.id,
-      })
-      .from(orderItems)
-      .innerJoin(dishes, eq(orderItems.dishId, dishes.id))
-      .where(eq(orderItems.orderId, orderId));
+    const itemsInOrder = await getOrderItemsWithDishes(orderId);
 
     if (itemsInOrder.length === 0) {
-      return { success: false, message: "Không tìm thấy món ăn trong đơn hàng." };
+      return {
+        success: false,
+        message: "Không tìm thấy món ăn trong đơn hàng.",
+      };
     }
 
-    const stripeLineItems = [];
+    const priceUpdates: Array<{ dishId: string; stripePriceId: string }> = [];
+    const stripeLineItems: Array<{ price: string; quantity: number }> = [];
 
     for (const item of itemsInOrder) {
       let priceId = item.stripePriceId;
 
       if (!priceId) {
-        const stripeProduct = await stripe.products.create({ name: item.dishName });
-        const stripePrice = await stripe.prices.create({
-          product: stripeProduct.id,
-          currency: "vnd",
-          unit_amount: Number(item.dishPrice),
-        });
-        priceId = stripePrice.id;
-        
-        await db.update(dishes).set({ stripePriceId: priceId }).where(eq(dishes.id, item.dishId));
+        priceId = await ensureStripePriceId(
+          null,
+          item.dishName,
+          Number(item.dishPrice),
+        );
+        priceUpdates.push({ dishId: item.dishId, stripePriceId: priceId });
       }
 
       stripeLineItems.push({
@@ -50,16 +39,17 @@ export async function retryCheckoutAction(orderId: string, userId: string) {
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: stripeLineItems,
-      mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/orders?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/orders?canceled=true`,
-      metadata: {
-        orderId: orderId,
-        userId: userId,   
-      },
+    if (priceUpdates.length > 0) {
+      await updateStripePriceIds(priceUpdates);
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const session = await createCheckoutSession({
+      lineItems: stripeLineItems,
+      orderId,
+      userId,
+      successUrl: `${baseUrl}/orders?success=true`,
+      cancelUrl: `${baseUrl}/orders?canceled=true`,
     });
 
     return { success: true, url: session.url };

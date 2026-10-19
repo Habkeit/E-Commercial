@@ -6,8 +6,10 @@ import { message } from "antd";
 import { useTranslations } from "next-intl";
 import { useCartStore } from "@/app/store/cartStore";
 import { useRouter } from "next/navigation";
+import { APP_ROUTES } from "@/lib/constants";
 
 interface CheckoutFormProps {
+
   handleCheckout: (
     formData: FormData,
   ) => Promise<{ success: boolean; message?: string; url?: string | null } | void>;
@@ -118,7 +120,7 @@ export default function CheckoutForm({
       window.location.href = result.url;
     } else {
       clearCart();
-      router.push("/orders");
+      router.push(APP_ROUTES.ORDERS);
       router.refresh();
     }
   };

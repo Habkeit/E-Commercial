@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
+import { APP_ROUTES } from "@/lib/constants";
+
 export default async function HomePage() {
   const t = await getTranslations("Home");
 
@@ -24,19 +26,20 @@ export default async function HomePage() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <Link
-            href="/foods"
+            href={APP_ROUTES.FOODS}
             className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-semibold px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2"
           >
             🔥 {t("exploreBtn")}
           </Link>
 
           <Link
-            href="/cart"
+            href={APP_ROUTES.CART}
             className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-800 font-semibold px-8 py-3.5 rounded-xl border border-gray-200 transition-all shadow-sm flex items-center justify-center gap-2"
           >
             🛒 {t("cartBtn")}
           </Link>
         </div>
+
 
         {/* Small stats or features */}
         <div className="grid grid-cols-3 gap-4 pt-12 border-t border-gray-100 mt-12 max-w-lg mx-auto text-gray-500 text-sm">

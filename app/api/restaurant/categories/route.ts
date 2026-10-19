@@ -11,7 +11,7 @@ const categorySchema = z.object({
 });
 
 // 1. Thêm hàm GET để lấy danh sách danh mục cho trang thêm món
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) {
