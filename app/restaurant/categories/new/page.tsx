@@ -11,7 +11,7 @@ import { z } from "zod";
 export default function CreateCategoryPage() {
   const router = useRouter();
   const [messageApi, contextHolder] = message.useMessage();
-  const t = useTranslations("CategoryManagement"); 
+  const t = useTranslations("CategoryManagement");
   const tCommon = useTranslations("Common");
 
   const [name, setName] = useState("");
@@ -121,11 +121,10 @@ export default function CreateCategoryPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-rose-500/20 cursor-pointer ${
-              isSubmitting
+            className={`w-full text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-rose-500/20 cursor-pointer ${isSubmitting
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-rose-500 hover:bg-rose-600 active:scale-[0.98]"
-            }`}
+              }`}
           >
             {isSubmitting ? t("submitting") : t("submitBtn")}
           </button>

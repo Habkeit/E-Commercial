@@ -46,7 +46,8 @@
     "district": "District",
     "ward": "Ward",
     "streetDetails": "House number, street name...",
-    "fillAddress": "Please select and enter your full address!"
+    "fillAddress": "Please select and enter your full address!",
+    "processing": "Processing..."
   },
   "RestaurantDashboard": {
     "restaurantDashboard": "Restaurant Dashboard",
@@ -125,7 +126,8 @@
     "statusPending": "Pending",
     "statusDelivering": "Delivering",
     "statusCompleted": "Completed",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "statusConfirmed": "Confirmed"
   },
   "RestaurantDetail": {
     "noDescription": "No detailed description provided.",

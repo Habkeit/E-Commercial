@@ -46,7 +46,8 @@
     "district": "Quận / Huyện",
     "ward": "Phường / Xã",
     "streetDetails": "Số nhà, tên đường, tòa nhà...",
-    "fillAddress": "Vui lòng chọn và nhập đầy đủ địa chỉ!"
+    "fillAddress": "Vui lòng chọn và nhập đầy đủ địa chỉ!",
+    "processing": "Đang xử lý..."
   },
   "RestaurantDashboard": {
     "restaurantDashboard": "Quản lý Nhà hàng",
@@ -125,7 +126,8 @@
     "statusPending": "Chờ xử lý",
     "statusDelivering": "Đang giao",
     "statusCompleted": "Hoàn tất",
-    "statusCancelled": "Đã hủy"
+    "statusCancelled": "Đã hủy",
+    "statusConfirmed": "Đã xác nhận"
   },
   "RestaurantDetail": {
     "noDescription": "Không có mô tả chi tiết.",

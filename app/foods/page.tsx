@@ -5,6 +5,7 @@ import { restaurants } from "@/db/schema";
 import { ilike } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import SearchBox from "./SearchBox";
+import { APP_ROUTES } from "@/lib/constants";
 
 interface Restaurant {
   id: string;
@@ -53,13 +54,14 @@ export default async function FoodsPage({
             <p className="text-gray-600">{t("selectRestaurantDesc")}</p>
           </div>
           <Link
-            href="/orders"
+            href={APP_ROUTES.ORDERS}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl text-sm transition-all shadow-sm"
           >
             <span>📦</span>
             <span>{t("viewOrderHistory")}</span>
           </Link>
         </div>
+
 
         <SearchBox
           initialQuery={searchQuery}

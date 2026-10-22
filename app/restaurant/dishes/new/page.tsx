@@ -200,11 +200,10 @@ export default function AddDishPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 cursor-pointer ${
-              isSubmitting
+            className={`w-full text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20 cursor-pointer ${isSubmitting
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-rose-500 hover:bg-rose-600"
-            }`}
+              }`}
           >
             {isSubmitting ? t("saving") : t("saveBtn")}
           </button>
