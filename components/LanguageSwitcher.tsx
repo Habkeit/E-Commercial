@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 export default function LanguageSwitcher() {
   const router = useRouter();
-  const currentLocale = useLocale(); 
+  const currentLocale = useLocale();
+  const t = useTranslations("Common");
 
   const toggleLanguage = () => {
     const newLocale = currentLocale === "vi" ? "en" : "vi";
@@ -17,7 +18,7 @@ export default function LanguageSwitcher() {
     <div
       onClick={toggleLanguage}
       className="relative flex items-center w-20 h-8 bg-gray-200 rounded-full p-1 cursor-pointer select-none transition-colors hover:bg-gray-300"
-      title="Đổi ngôn ngữ / Switch language"
+      title={t("switchLanguage")}
     >
       <div
         className={`absolute left-1 top-1 w-9 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ease-spring ${

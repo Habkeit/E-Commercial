@@ -14,7 +14,10 @@
     "addToCart": "Thêm vào giỏ",
     "adding": "Đang thêm...",
     "addedSuccess": "🎉 Thêm vào giỏ hàng thành công!",
-    "addError": "❌ Thêm vào giỏ hàng thất bại. Vui lòng thử lại!"
+    "addError": "❌ Thêm vào giỏ hàng thất bại. Vui lòng thử lại!",
+    "removeItem": "Xóa món",
+    "genericError": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại!",
+    "switchLanguage": "Đổi ngôn ngữ"
   },
   "Home": {
     "badge": "Nền tảng đặt đồ ăn trực tuyến",
@@ -47,7 +50,10 @@
     "ward": "Phường / Xã",
     "streetDetails": "Số nhà, tên đường, tòa nhà...",
     "fillAddress": "Vui lòng chọn và nhập đầy đủ địa chỉ!",
-    "processing": "Đang xử lý..."
+    "fillPhoneAndAddress": "Vui lòng nhập đầy đủ Số điện thoại và Địa chỉ!",
+    "processing": "Đang xử lý...",
+    "checkoutFailed": "Thanh toán thất bại. Vui lòng thử lại.",
+    "connectionError": "Đã xảy ra lỗi kết nối khi thanh toán. Vui lòng thử lại!"
   },
   "RestaurantDashboard": {
     "restaurantDashboard": "Quản lý Nhà hàng",
@@ -57,7 +63,6 @@
     "addNewDish": "Thêm món mới",
     "addCategory": "Thêm danh mục mới",
     "editRestaurantInfo": "Chỉnh sửa thông tin nhà hàng",
-    "restaurantName": "Tên nhà hàng",
     "dishNameLabel": "Tên món ăn",
     "dishPriceLabel": "Giá món ăn",
     "dishDescLabel": "Mô tả món ăn",
@@ -67,8 +72,11 @@
     "emptyMenu": "Thực đơn của bạn đang trống. Hãy thêm món ăn đầu tiên!",
     "noDescription": "Không có mô tả.",
     "activeStatus": "Đang bán",
+    "preOrderStatus": "Đặt trước",
+    "inactiveStatus": "Tạm ngưng",
     "editBtn": "Chỉnh sửa",
     "address": "Địa chỉ",
+    "restaurantName": "Tên nhà hàng",
     "houseNumber": "Số nhà",
     "street": "Tên đường",
     "ward": "Phường / Xã",
@@ -105,17 +113,28 @@
     "cityProvincePlaceholder": "VD: TP. Hồ Chí Minh",
     "registering": "Đang đăng ký...",
     "completeRegistration": "Hoàn tất Đăng ký 🚀",
-    "fillRequiredFields": "Vui lòng điền đầy đủ thông tin bắt buộc!",
+    "fillRequiredFields": "Vui lòng điền đầy đủ các thông tin bắt buộc!",
     "registerSuccess": "🎉 Đăng ký nhà hàng thành công!"
   },
   "Foods": {
     "partnerRestaurants": "Nhà hàng Đối tác",
-    "selectRestaurantDesc": "Chọn một nhà hàng để khám phá thực đơn và các món ăn hấp dẫn.",
-    "viewOrderHistory": "Lịch sử đơn hàng",
+    "selectRestaurantDesc": "Chọn một nhà hàng để khám phá thực đơn thơm ngon.",
+    "viewOrderHistory": "Lịch sử Đơn hàng",
     "searchRestaurants": "Tìm kiếm nhà hàng...",
     "searchBtn": "Tìm kiếm",
-    "noRestaurantsFound": "Không tìm thấy nhà hàng nào khớp với",
-    "viewMenu": "Xem Thực đơn & Món ăn →"
+    "noRestaurantsFound": "Không tìm thấy nhà hàng nào phù hợp với",
+    "viewMenu": "Xem thực đơn & món ăn →"
+  },
+  "DishDetail": {
+    "restaurant": "Nhà hàng",
+    "openingHours": "Giờ mở cửa:",
+    "dishDescription": "Mô tả món ăn:",
+    "noDescription": "Chưa có mô tả chi tiết cho món ăn này.",
+    "noteFromRestaurant": "Lưu ý từ nhà hàng:",
+    "noteLabel": "Ghi chú cho nhà hàng (VD: Ít cay, không hành):",
+    "notePlaceholder": "Nhập ghi chú của bạn...",
+    "addedSuccess": "✅ Đã thêm vào giỏ hàng thành công!",
+    "viewCartAndCheckout": "Xem giỏ hàng & Thanh toán 🛒"
   },
   "Orders": {
     "orderHistoryTitle": "Lịch sử Đơn hàng",
@@ -123,61 +142,69 @@
     "startOrderingLink": "Bắt đầu đặt món ngay!",
     "orderIdLabel": "Mã đơn:",
     "dateLabel": "Ngày đặt:",
-    "statusPending": "Chờ xử lý",
+    "orderStatusLabel": "Trạng thái:",
+    "statusPending": "Chờ thanh toán",
     "statusDelivering": "Đang giao",
     "statusCompleted": "Hoàn tất",
     "statusCancelled": "Đã hủy",
-    "statusConfirmed": "Đã xác nhận"
+    "statusConfirmed": "Đã xác nhận",
+    "retryPayment": "💳 Thanh toán ngay",
+    "retryingPayment": "Đang xử lý...",
+    "retryError": "Lỗi thanh toán: "
   },
   "RestaurantDetail": {
     "noDescription": "Không có mô tả chi tiết.",
     "prev": "← Trước",
     "next": "Sau →",
     "pageInfo": "Trang {current} / {total}",
-    "noCategoriesOrDishes": "Nhà hàng này hiện không có danh mục hoặc món ăn nào. Vui lòng quay lại sau!"
+    "noCategoriesOrDishes": "Nhà hàng này hiện chưa có món ăn hoặc danh mục nào. Vui lòng quay lại sau nhé!",
+    "preOrderBadge": "⏳ Đặt trước"
   },
   "CategoryManagement": {
-    "badge": "Quản lý thực đơn",
+    "badge": "Quản lý Thực đơn",
     "title": "Thêm danh mục mới",
     "back": "Quay lại",
     "nameLabel": "Tên danh mục",
-    "namePlaceholder": "VD: Cơm tấm, Trà sữa, Món thêm...",
+    "namePlaceholder": "VD: Cơm, Trà sữa, Món ăn kèm...",
     "nameRequired": "Vui lòng nhập tên danh mục",
-    "descLabel": "Mô tả (Tùy chọn)",
+    "descLabel": "Mô tả (Không bắt buộc)",
     "descPlaceholder": "Nhập mô tả cho danh mục này...",
     "submitBtn": "Tạo danh mục",
     "submitting": "Đang xử lý...",
-    "successMsg": "🎉 Tạo danh mục mới thành công!"
+    "successMsg": "🎉 Tạo danh mục thành công!"
   },
   "AddDish": {
-    "title": "Thêm món ăn mới",
-    "back": "Quay lại Dashboard",
+    "title": "Thêm Món Ăn Mới",
+    "back": "Quay lại Bảng điều khiển",
     "nameLabel": "Tên món ăn",
-    "namePlaceholder": "VD: Cơm tấm sườn bì",
+    "namePlaceholder": "VD: Cơm sườn bì chả",
     "categoryLabel": "Danh mục món",
     "loadingCategories": "Đang tải danh mục...",
-    "priceLabel": "Giá (VND)",
+    "priceLabel": "Giá bán (VND)",
     "pricePlaceholder": "VD: 50000",
-    "stockLabel": "Số lượng kho (Stock)",
+    "stockLabel": "Số lượng trong kho",
     "stockPlaceholder": "VD: 10",
     "statusLabel": "Trạng thái bán",
-    "descLabel": "Mô tả",
-    "descPlaceholder": "Mô tả nguyên liệu, hương vị...",
+    "descLabel": "Mô tả món ăn",
+    "descPlaceholder": "Mô tả nguyên liệu, hương vị món ăn...",
     "saving": "Đang lưu...",
     "saveBtn": "Lưu món ăn ✨",
-    "fillRequiredFields": "Vui lòng điền đầy đủ các trường bắt buộc!",
-    "successMsg": "🎉 Thêm món ăn thành công!"
+    "fillRequiredFields": "Vui lòng điền đầy đủ các thông tin bắt buộc!",
+    "successMsg": "🎉 Thêm món ăn thành công!",
+    "activeOption": "🟢 Đang bán",
+    "preOrderOption": "⏳ Đặt trước",
+    "inactiveOption": "🔴 Tạm ngưng"
   },
   "RestaurantOrders": {
-    "partnerOrders": "Đơn hàng đối tác",
-    "incomingOrders": "Đơn hàng đến",
-    "backToDashboard": "← Quay lại Dashboard",
+    "partnerOrders": "Đơn hàng Đối tác",
+    "incomingOrders": "Đơn hàng Mới nhận",
+    "backToDashboard": "← Trở về Bảng điều khiển",
     "noOrders": "Chưa có đơn hàng nào.",
     "orderId": "Mã đơn:",
     "time": "Thời gian:",
-    "deliveryAddress": "Địa chỉ giao hàng:",
+    "deliveryAddress": "Địa chỉ giao:",
     "totalAmount": "Tổng tiền:",
-    "markDelivering": "Đánh dấu Đang giao 🚚",
-    "markCompleted": "Đánh dấu Hoàn tất ✅"
+    "markDelivering": "Xác nhận Đang giao 🚚",
+    "markCompleted": "Xác nhận Hoàn tất ✅"
   }
 }

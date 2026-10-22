@@ -1,5 +1,10 @@
 // app/store/cartStore.ts
 import { create } from "zustand";
+import {
+  getCartAction,
+  addToCartAction,
+  removeFromCartAction,
+} from "@/app/actions/cart";
 
 export interface CartItem {
   dishId: string;
@@ -25,10 +30,9 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   fetchCart: async () => {
     try {
-      const res = await fetch("/api/cart");
-      const data = await res.json();
-      if (data.success) {
-        set({ cart: data.cart });
+      const res = await getCartAction();
+      if (res.success && res.cart) {
+        set({ cart: res.cart });
       }
     } catch (err) {
       console.error("Failed to fetch cart from DB", err);
@@ -37,16 +41,10 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   addToCart: async (item) => {
     try {
-      await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dishId: item.dishId,
-          quantity: item.quantity,
-          note: item.note,
-        }),
-      });
-      await get().fetchCart();
+      const res = await addToCartAction(item.dishId, item.quantity, item.note);
+      if (res.success) {
+        await get().fetchCart();
+      }
     } catch (err) {
       console.error("Add to cart error", err);
     }
@@ -54,7 +52,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   removeFromCart: async (dishId) => {
     try {
-      await fetch(`/api/cart?dishId=${dishId}`, { method: "DELETE" });
+      await removeFromCartAction(dishId);
       set((state) => ({ cart: state.cart.filter((i) => i.dishId !== dishId) }));
     } catch (err) {
       console.error("Remove item error", err);

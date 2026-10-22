@@ -40,5 +40,3 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 * `app/actions/`: Modular Server Actions for form submissions and database mutations.
 * `app/cart/` & `app/orders/`: UI pages managing cart interactions and order history.
 * `db/`: Database configuration and Drizzle ORM schema definitions.
-
-## Have to create an Implement Plan before executing.

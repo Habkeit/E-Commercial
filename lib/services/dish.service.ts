@@ -6,8 +6,10 @@
 import { db } from "@/db";
 import { dishes } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { DISH_STATUS } from "@/lib/constants";
 
 export type DishRecord = typeof dishes.$inferSelect;
+export type DrizzleExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
  * Fetch multiple dishes by IDs in a single query.
@@ -30,7 +32,7 @@ export async function getDishesByIds(
 }
 
 /**
- * Validate stock availability for a list of cart items.
+ * Validate stock availability and active status for a list of cart items.
  * Uses a single bulk query instead of N individual queries.
  *
  * Returns null if all items pass validation, or an error message string.
@@ -47,8 +49,12 @@ export async function validateStock(
       return `Dish "${item.dishName}" no longer exists on the system.`;
     }
 
+    if (!dish.isActive || dish.status === DISH_STATUS.INACTIVE) {
+      return `Dish "${item.dishName}" is currently unavailable.`;
+    }
+
     if (dish.stock < item.quantity) {
-      return `Sorry! Dish "${item.dishName}" only has ${dish.stock} left.`;
+      return `Sorry! Dish "${item.dishName}" only has ${dish.stock} left in stock.`;
     }
   }
 
@@ -68,48 +74,61 @@ export async function decrementStock(
     .where(eq(dishes.id, dishId));
 
   if (currentDish) {
-    const newStock = currentDish.stock - quantity;
+    const newStock = Math.max(0, currentDish.stock - quantity);
     await db
       .update(dishes)
-      .set({ stock: newStock, isActive: newStock > 0 })
+      .set({
+        stock: newStock,
+        isActive: newStock > 0,
+        status: newStock === 0 ? DISH_STATUS.INACTIVE : currentDish.status,
+        updatedAt: new Date(),
+      })
       .where(eq(dishes.id, dishId));
   }
 }
 
 /**
  * Decrement stock for multiple dishes in batch.
- * Eliminates N+1 select & update loops in the Stripe webhook.
+ * Accepts an optional transaction executor to participate in atomic outer transactions.
  */
 export async function decrementStockBatch(
   items: Array<{ dishId: string; quantity: number }>,
+  txOrDb?: DrizzleExecutor,
 ): Promise<void> {
   if (items.length === 0) return;
 
   const dishMap = await getDishesByIds(items.map((i) => i.dishId));
 
-  await db.transaction(async (tx) => {
+  const runUpdates = async (executor: DrizzleExecutor) => {
     for (const item of items) {
       const currentDish = dishMap.get(item.dishId);
       if (currentDish) {
         const newStock = Math.max(0, currentDish.stock - item.quantity);
-        await tx
+        await executor
           .update(dishes)
           .set({
             stock: newStock,
             isActive: newStock > 0,
-            status: newStock === 0 ? "inactive" : currentDish.status,
+            status: newStock === 0 ? DISH_STATUS.INACTIVE : currentDish.status,
             updatedAt: new Date(),
           })
           .where(eq(dishes.id, item.dishId));
       }
     }
-  });
+  };
+
+  if (txOrDb) {
+    await runUpdates(txOrDb);
+  } else {
+    await db.transaction(async (tx) => {
+      await runUpdates(tx);
+    });
+  }
 }
 
 /**
  * Fetch a single dish with its associated restaurant details.
- * Used directly by Server Components (e.g. food detail page) to avoid
- * the anti-pattern of fetching internal Next.js API routes over HTTP.
+ * Used directly by Server Components (e.g. food detail page).
  */
 export async function getDishByIdWithRestaurant(dishId: string) {
   const dish = await db.query.dishes.findFirst({
@@ -139,5 +158,3 @@ export async function updateStripePriceIds(
     ),
   );
 }
-
-

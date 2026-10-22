@@ -1,20 +1,85 @@
 "use server";
 
-import { getOrderItemsWithDishes } from "@/lib/services/order.service";
+import { auth } from "@clerk/nextjs/server";
+import {
+  getOrderById,
+  getOrderItemsWithDishes,
+} from "@/lib/services/order.service";
 import {
   ensureStripePriceId,
   createCheckoutSession,
 } from "@/lib/services/stripe.service";
-import { updateStripePriceIds } from "@/lib/services/dish.service";
+import {
+  validateStock,
+  updateStripePriceIds,
+} from "@/lib/services/dish.service";
+import { findUserByClerkId } from "@/lib/services/user.service";
+import { ORDER_STATUS } from "@/lib/constants";
 
-export async function retryCheckoutAction(orderId: string, userId: string) {
+export async function retryCheckoutAction(orderId: string) {
   try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return {
+        success: false,
+        message: "Please sign in to retry payment.",
+      };
+    }
+
+    const currentUser = await findUserByClerkId(clerkId);
+    if (!currentUser) {
+      return {
+        success: false,
+        message: "User record not found.",
+      };
+    }
+
+    const order = await getOrderById(orderId);
+    if (!order) {
+      return {
+        success: false,
+        message: "Order not found.",
+      };
+    }
+
+    // Verify order ownership
+    if (order.userId !== currentUser.id && order.userId !== clerkId) {
+      return {
+        success: false,
+        message: "Unauthorized: You do not own this order.",
+      };
+    }
+
+    // Verify order is still pending
+    if (order.status !== ORDER_STATUS.PENDING) {
+      return {
+        success: false,
+        message: `This order cannot be paid again because its status is "${order.status}".`,
+      };
+    }
+
     const itemsInOrder = await getOrderItemsWithDishes(orderId);
 
     if (itemsInOrder.length === 0) {
       return {
         success: false,
-        message: "Không tìm thấy món ăn trong đơn hàng.",
+        message: "No dishes found in this order.",
+      };
+    }
+
+    // Re-validate stock before allowing checkout session creation
+    const stockError = await validateStock(
+      itemsInOrder.map((item) => ({
+        dishId: item.dishId,
+        dishName: item.dishName,
+        quantity: item.quantity,
+      })),
+    );
+
+    if (stockError) {
+      return {
+        success: false,
+        message: stockError,
       };
     }
 
@@ -28,7 +93,7 @@ export async function retryCheckoutAction(orderId: string, userId: string) {
         priceId = await ensureStripePriceId(
           null,
           item.dishName,
-          Number(item.dishPrice),
+          Math.round(Number(item.dishPrice)),
         );
         priceUpdates.push({ dishId: item.dishId, stripePriceId: priceId });
       }
@@ -47,14 +112,14 @@ export async function retryCheckoutAction(orderId: string, userId: string) {
     const session = await createCheckoutSession({
       lineItems: stripeLineItems,
       orderId,
-      userId,
+      userId: currentUser.id,
       successUrl: `${baseUrl}/orders?success=true`,
       cancelUrl: `${baseUrl}/orders?canceled=true`,
     });
 
     return { success: true, url: session.url };
   } catch (error) {
-    console.error("Lỗi tạo lại phiên thanh toán:", error);
-    return { success: false, message: "Lỗi kết nối thanh toán." };
+    console.error("Payment retry error:", error);
+    return { success: false, message: "Payment service connection error." };
   }
 }

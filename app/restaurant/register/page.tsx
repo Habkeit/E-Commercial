@@ -7,6 +7,7 @@ import Link from "next/link";
 import { message } from "antd";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
+import { registerRestaurantAction } from "@/app/actions/restaurant";
 
 export default function RegisterRestaurantPage() {
   const router = useRouter();
@@ -49,13 +50,7 @@ export default function RegisterRestaurantPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/restaurant/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsedData.data),
-      });
-
-      const data = await response.json();
+      const data = await registerRestaurantAction(parsedData.data);
 
       if (data.success) {
         messageApi.success(t("registerSuccess"));

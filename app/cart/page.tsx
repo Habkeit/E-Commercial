@@ -1,14 +1,12 @@
 // app/cart/page.tsx
-import { db } from "@/db";
-import { cartItems, dishes } from "@/db/schema";
 import { auth, currentUser as getClerkUser } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import CheckoutForm from "./CheckoutForm";
 import CartItemQuantity from "./CartItemQuantity";
 import { getOrCreateUser } from "@/lib/services/user.service";
+import { getCartForUser } from "@/lib/services/cart.service";
 import { handleCheckoutAction } from "@/app/actions/checkout";
 import { updateCartItemQuantityAction } from "@/app/actions/cart";
 import { APP_ROUTES } from "@/lib/constants";
@@ -28,20 +26,7 @@ export default async function CartPage() {
   const defaultPhone = clerkUser?.phoneNumbers?.[0]?.phoneNumber || "";
   const t = await getTranslations("Cart");
 
-  const items = await db
-    .select({
-      cartId: cartItems.id,
-      quantity: cartItems.quantity,
-      note: cartItems.note,
-      dishId: dishes.id,
-      dishName: dishes.name,
-      dishPrice: dishes.price,
-      stripePriceId: dishes.stripePriceId,
-    })
-    .from(cartItems)
-    .innerJoin(dishes, eq(cartItems.dishId, dishes.id))
-    .where(eq(cartItems.userId, currentUser.id))
-    .orderBy(cartItems.createdAt);
+  const items = await getCartForUser(currentUser.id);
 
   const totalAmount = items.reduce(
     (sum, item) => sum + Number(item.dishPrice) * item.quantity,

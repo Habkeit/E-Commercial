@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { message } from "antd";
 import { useTranslations } from "next-intl";
+import { getCategoriesAction, createDishAction } from "@/app/actions/restaurant";
 
 interface Category {
   id: string;
@@ -31,9 +32,8 @@ export default function AddDishPage() {
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const res = await fetch("/api/restaurant/categories");
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data.categories || [];
+        const res = await getCategoriesAction();
+        const list = res.categories || [];
         setCategories(list);
         if (list.length > 0) {
           setCategoryId(list[0].id);
@@ -56,20 +56,15 @@ export default function AddDishPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/restaurant/dishes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          price: parseFloat(price),
-          stock: parseInt(stock, 10),
-          categoryId,
-          status,
-          description,
-        }),
-      });
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("price", price);
+      formData.append("stock", stock);
+      formData.append("categoryId", categoryId);
+      formData.append("status", status);
+      formData.append("description", description);
 
-      const data = await response.json();
+      const data = await createDishAction(formData);
 
       if (data.success) {
         messageApi.success(t("successMsg"));
@@ -179,9 +174,9 @@ export default function AddDishPage() {
               onChange={(e) => setStatus(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-900 bg-white"
             >
-              <option value="active">🟢 Active (Đang bán)</option>
-              <option value="pre_order">⏳ Pre-order (Đặt trước)</option>
-              <option value="inactive">🔴 Inactive (Tạm ngưng)</option>
+              <option value="active">{t("activeOption")}</option>
+              <option value="pre_order">{t("preOrderOption")}</option>
+              <option value="inactive">{t("inactiveOption")}</option>
             </select>
           </div>
 

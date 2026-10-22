@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCartStore } from "@/app/store/cartStore";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface Props {
   dish: {
@@ -14,9 +15,10 @@ interface Props {
 }
 
 export default function AddToCartButton({ dish }: Props) {
-  // Extract only the function you need from the store
   const addToCart = useCartStore((state) => state.addToCart);
   const router = useRouter();
+  const t = useTranslations("DishDetail");
+  const tCommon = useTranslations("Common");
 
   const [note, setNote] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -29,7 +31,7 @@ export default function AddToCartButton({ dish }: Props) {
       price: Number(dish.price),
       quantity: quantity,
       note: note,
-      restaurantName: dish.restaurant?.name || "Restaurant",
+      restaurantName: dish.restaurant?.name || t("restaurant"),
     });
 
     setShowNotification(true);
@@ -40,14 +42,14 @@ export default function AddToCartButton({ dish }: Props) {
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Note for the restaurant (e.g., Less spicy):
+          {t("noteLabel")}
         </label>
         <input
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Enter your note..."
-          className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+          placeholder={t("notePlaceholder")}
+          className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-gray-900"
         />
       </div>
 
@@ -59,7 +61,7 @@ export default function AddToCartButton({ dish }: Props) {
           >
             -
           </button>
-          <span className="px-4 py-2 text-center font-medium w-12">
+          <span className="px-4 py-2 text-center font-medium w-12 text-gray-900">
             {quantity}
           </span>
           <button
@@ -74,13 +76,13 @@ export default function AddToCartButton({ dish }: Props) {
           onClick={handleAdd}
           className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-rose-500/20"
         >
-          Add to Cart
+          {tCommon("addToCart")}
         </button>
       </div>
 
       {showNotification && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg text-center font-medium animate-fade-in">
-          ✅ Added to cart successfully!
+          {t("addedSuccess")}
         </div>
       )}
 
@@ -88,7 +90,7 @@ export default function AddToCartButton({ dish }: Props) {
         onClick={() => router.push("/cart")}
         className="w-full bg-gray-900 hover:bg-black text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
       >
-        View Cart & Checkout 🛒
+        {t("viewCartAndCheckout")}
       </button>
     </div>
   );

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { message } from "antd";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
+import { createCategoryAction } from "@/app/actions/restaurant";
 
 export default function CreateCategoryPage() {
   const router = useRouter();
@@ -40,13 +41,7 @@ export default function CreateCategoryPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/restaurant/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsedData.data),
-      });
-
-      const data = await response.json();
+      const data = await createCategoryAction(parsedData.data);
 
       if (data.success) {
         messageApi.success(t("successMsg"));

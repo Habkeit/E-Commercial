@@ -60,10 +60,7 @@ export default async function RestaurantDashboard({
     getDishesByRestaurantId(restaurant.id),
   ]);
 
-  const handleDeleteRestaurant = async () => {
-    "use server";
-    return deleteRestaurantAction(restaurant.id);
-  };
+  const deleteAction = deleteRestaurantAction.bind(null, restaurant.id);
 
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-6">
@@ -111,7 +108,7 @@ export default async function RestaurantDashboard({
               📦 {t("restaurantOrders")}
             </Link>
 
-            <DeleteRestaurantModal deleteAction={handleDeleteRestaurant} />
+            <DeleteRestaurantModal deleteAction={deleteAction} />
           </div>
         </div>
 
@@ -159,6 +156,9 @@ export default async function RestaurantDashboard({
                         dishDescLabel: t("dishDescLabel"),
                         saveChanges: t("saveChanges"),
                         cancelBtn: t("cancelBtn"),
+                        activeStatus: t("activeStatus"),
+                        preOrderStatus: t("preOrderStatus"),
+                        inactiveStatus: t("inactiveStatus"),
                       }}
                     />
                   );
@@ -175,6 +175,8 @@ export default async function RestaurantDashboard({
                       noDescription: t("noDescription"),
                       stock: t("stock"),
                       activeStatus: t("activeStatus"),
+                      preOrderStatus: t("preOrderStatus"),
+                      inactiveStatus: t("inactiveStatus"),
                     }}
                   />
                 );

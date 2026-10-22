@@ -14,7 +14,10 @@
     "addToCart": "Add to Cart",
     "adding": "Adding...",
     "addedSuccess": "🎉 Successfully added to cart!",
-    "addError": "❌ Failed to add to cart. Please try again!"
+    "addError": "❌ Failed to add to cart. Please try again!",
+    "removeItem": "Remove item",
+    "genericError": "An unexpected error occurred. Please try again!",
+    "switchLanguage": "Switch language"
   },
   "Home": {
     "badge": "Online Food Delivery Platform",
@@ -47,7 +50,10 @@
     "ward": "Ward",
     "streetDetails": "House number, street name...",
     "fillAddress": "Please select and enter your full address!",
-    "processing": "Processing..."
+    "fillPhoneAndAddress": "Please fill in both Phone Number and Address!",
+    "processing": "Processing...",
+    "checkoutFailed": "Checkout failed. Please try again.",
+    "connectionError": "Payment connection error. Please try again!"
   },
   "RestaurantDashboard": {
     "restaurantDashboard": "Restaurant Dashboard",
@@ -66,6 +72,8 @@
     "emptyMenu": "Your menu is currently empty. Add your first dish!",
     "noDescription": "No description provided.",
     "activeStatus": "Active",
+    "preOrderStatus": "Pre-order",
+    "inactiveStatus": "Inactive",
     "editBtn": "Edit",
     "address": "Address",
     "restaurantName": "Restaurant Name",
@@ -117,24 +125,40 @@
     "noRestaurantsFound": "No restaurants found matching",
     "viewMenu": "View Menu & Dishes →"
   },
+  "DishDetail": {
+    "restaurant": "Restaurant",
+    "openingHours": "Opening Hours:",
+    "dishDescription": "Dish Description:",
+    "noDescription": "No additional description available for this dish.",
+    "noteFromRestaurant": "Note from restaurant:",
+    "noteLabel": "Note for the restaurant (e.g., Less spicy):",
+    "notePlaceholder": "Enter your note...",
+    "addedSuccess": "✅ Added to cart successfully!",
+    "viewCartAndCheckout": "View Cart & Checkout 🛒"
+  },
   "Orders": {
     "orderHistoryTitle": "Order History",
     "noOrdersText": "You have no orders yet.",
     "startOrderingLink": "Start ordering now!",
     "orderIdLabel": "Order ID:",
     "dateLabel": "Date:",
+    "orderStatusLabel": "Status:",
     "statusPending": "Pending",
     "statusDelivering": "Delivering",
     "statusCompleted": "Completed",
     "statusCancelled": "Cancelled",
-    "statusConfirmed": "Confirmed"
+    "statusConfirmed": "Confirmed",
+    "retryPayment": "💳 Pay Now",
+    "retryingPayment": "Processing...",
+    "retryError": "Payment error: "
   },
   "RestaurantDetail": {
     "noDescription": "No detailed description provided.",
     "prev": "← Prev",
     "next": "Next →",
     "pageInfo": "Page {current} of {total}",
-    "noCategoriesOrDishes": "This restaurant has no categories or dishes available at the moment. Please check back later!"
+    "noCategoriesOrDishes": "This restaurant has no categories or dishes available at the moment. Please check back later!",
+    "preOrderBadge": "⏳ Pre-order"
   },
   "CategoryManagement": {
     "badge": "Menu Management",
@@ -166,7 +190,10 @@
     "saving": "Saving...",
     "saveBtn": "Save Dish ✨",
     "fillRequiredFields": "Please fill in all required fields!",
-    "successMsg": "🎉 Dish added successfully!"
+    "successMsg": "🎉 Dish added successfully!",
+    "activeOption": "🟢 Active",
+    "preOrderOption": "⏳ Pre-order",
+    "inactiveOption": "🔴 Inactive"
   },
   "RestaurantOrders": {
     "partnerOrders": "Partner Orders",

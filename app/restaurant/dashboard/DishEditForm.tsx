@@ -22,6 +22,9 @@ interface DishEditFormProps {
     dishDescLabel: string;
     saveChanges: string;
     cancelBtn: string;
+    activeStatus: string;
+    preOrderStatus: string;
+    inactiveStatus: string;
   };
 }
 
@@ -89,9 +92,9 @@ export default function DishEditForm({
             required
             className="w-full border border-gray-300 p-2 text-sm rounded outline-none focus:ring-1 focus:ring-rose-500 bg-white text-gray-900"
           >
-            <option value={DISH_STATUS.ACTIVE}>🟢 Active</option>
-            <option value={DISH_STATUS.PRE_ORDER}>⏳ Pre-order</option>
-            <option value={DISH_STATUS.INACTIVE}>🔴 Inactive</option>
+            <option value={DISH_STATUS.ACTIVE}>🟢 {labels.activeStatus}</option>
+            <option value={DISH_STATUS.PRE_ORDER}>⏳ {labels.preOrderStatus}</option>
+            <option value={DISH_STATUS.INACTIVE}>🔴 {labels.inactiveStatus}</option>
           </select>
         </div>
 

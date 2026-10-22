@@ -38,7 +38,7 @@ export default function CategoryDishList({ dishes }: { dishes: Dish[] }) {
                 <h3 className="text-lg font-bold text-gray-900">{dish.name}</h3>
                 {dish.status === "pre_order" && (
                   <span className="bg-amber-50 text-amber-600 border border-amber-200 text-xs font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                    ⏳ Pre-order
+                    {t("preOrderBadge")}
                   </span>
                 )}
               </div>

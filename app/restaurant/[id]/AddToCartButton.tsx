@@ -1,8 +1,8 @@
-//app/restaurant/[id]/AddToCartButton.tsx
+// app/restaurant/[id]/AddToCartButton.tsx
 "use client";
 
 import { message } from "antd";
-import { addToCart } from "./actions";
+import { addToCartAction } from "@/app/actions/cart";
 import { useState } from "react";
 import { useCartStore } from "@/app/store/cartStore";
 import { useTranslations } from "next-intl";
@@ -19,10 +19,13 @@ export default function AddToCartButton({ dishId }: AddToCartButtonProps) {
   const handleAddToCart = async () => {
     try {
       setIsLoading(true);
-      await addToCart(dishId);
-      await fetchCart();
-
-      message.success(t("addedSuccess"));
+      const res = await addToCartAction(dishId);
+      if (res.success) {
+        await fetchCart();
+        message.success(t("addedSuccess"));
+      } else {
+        message.error(res.message || t("addError"));
+      }
     } catch (error) {
       console.error(error);
       message.error(t("addError"));

@@ -1,35 +1,9 @@
 // app/foods/page.tsx
 import Link from "next/link";
-import { db } from "@/db";
-import { restaurants } from "@/db/schema";
-import { ilike } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import SearchBox from "./SearchBox";
 import { APP_ROUTES } from "@/lib/constants";
-
-interface Restaurant {
-  id: string;
-  name: string;
-  houseNumber: string;
-  street: string;
-  ward: string;
-  province: string;
-  note: string | null;
-}
-
-async function getRestaurants(searchQuery?: string): Promise<Restaurant[]> {
-  try {
-    const data = await db.query.restaurants.findMany({
-      where: searchQuery
-        ? ilike(restaurants.name, `%${searchQuery}%`)
-        : undefined,
-    });
-    return data;
-  } catch (error) {
-    console.error("Database query failed:", error);
-    return [];
-  }
-}
+import { getRestaurants } from "@/lib/services/restaurant.service";
 
 export default async function FoodsPage({
   searchParams,

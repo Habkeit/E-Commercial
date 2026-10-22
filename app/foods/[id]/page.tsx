@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import AddToCartButton from "./AddToCartButton";
 import { getDishByIdWithRestaurant } from "@/lib/services/dish.service";
+import { getTranslations } from "next-intl/server";
 
 export default async function DishDetailPage({
   params,
@@ -14,6 +15,8 @@ export default async function DishDetailPage({
   if (!dish) {
     notFound();
   }
+
+  const t = await getTranslations("DishDetail");
 
   const formatTime = (time?: Date | string | null) => {
     if (!time) return "N/A";
@@ -35,10 +38,10 @@ export default async function DishDetailPage({
         {/* Restaurant Label & Hours */}
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs font-bold uppercase tracking-wider bg-orange-100 text-orange-600 px-3 py-1.5 rounded-full">
-            🏪 {dish.restaurant?.name || "Restaurant"}
+            🏪 {dish.restaurant?.name || t("restaurant")}
           </span>
           <span className="text-sm text-gray-500">
-            Opening Hours: {formatTime(dish.restaurant?.openTime)} -{" "}
+            {t("openingHours")} {formatTime(dish.restaurant?.openTime)} -{" "}
             {formatTime(dish.restaurant?.closeTime)}
           </span>
         </div>
@@ -54,18 +57,17 @@ export default async function DishDetailPage({
         {/* Detailed Description */}
         <div className="border-t border-b border-gray-100 py-4 mb-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-1">
-            Dish Description:
+            {t("dishDescription")}
           </h3>
           <p className="text-gray-600">
-            {dish.description ||
-              "No additional description available for this dish."}
+            {dish.description || t("noDescription")}
           </p>
         </div>
 
         {/* Additional Note from Restaurant */}
         {dish.restaurant?.note && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800">
-            💡 **Note from restaurant:** {dish.restaurant.note}
+            💡 <strong>{t("noteFromRestaurant")}</strong> {dish.restaurant.note}
           </div>
         )}
 

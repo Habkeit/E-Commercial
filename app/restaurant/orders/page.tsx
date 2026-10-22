@@ -1,13 +1,11 @@
 // app/restaurant/orders/page.tsx
-import { db } from "@/db";
-import { restaurants } from "@/db/schema";
-import { eq, or } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { findUserByClerkId } from "@/lib/services/user.service";
 import { getIncomingOrdersForRestaurants } from "@/lib/services/order.service";
+import { getRestaurantsByUserId } from "@/lib/services/restaurant.service";
 import OrderStatusActionButton from "./OrderStatusActionButton";
 import {
   ORDER_STATUS,
@@ -27,15 +25,7 @@ export default async function RestaurantOrdersPage() {
     redirect(APP_ROUTES.HOME);
   }
 
-  const myRestaurants = await db
-    .select()
-    .from(restaurants)
-    .where(
-      or(
-        eq(restaurants.userId, currentUser.id),
-        eq(restaurants.userId, clerkId),
-      ),
-    );
+  const myRestaurants = await getRestaurantsByUserId(currentUser.id);
 
   const t = await getTranslations("RestaurantOrders");
   const tDashboard = await getTranslations("RestaurantDashboard");

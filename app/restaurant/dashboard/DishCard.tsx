@@ -18,6 +18,8 @@ interface DishCardProps {
     noDescription: string;
     stock: string;
     activeStatus: string;
+    preOrderStatus: string;
+    inactiveStatus: string;
   };
 }
 
@@ -28,9 +30,9 @@ export default function DishCard({ dish, labels }: DishCardProps) {
   const getStatusDisplay = () => {
     switch (status) {
       case DISH_STATUS.PRE_ORDER:
-        return "⏳ Pre-order";
+        return `⏳ ${labels.preOrderStatus}`;
       case DISH_STATUS.INACTIVE:
-        return "🔴 Inactive";
+        return `🔴 ${labels.inactiveStatus}`;
       case DISH_STATUS.ACTIVE:
       default:
         return labels.activeStatus;

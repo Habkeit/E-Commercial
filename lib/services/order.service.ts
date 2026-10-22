@@ -4,9 +4,39 @@
  */
 import { db } from "@/db";
 import { orders, orderItems, dishes } from "@/db/schema";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import { ORDER_STATUS, type OrderStatus } from "@/lib/constants";
+
+export type OrderRecord = typeof orders.$inferSelect;
+export type DrizzleExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Fetch a single order by its ID.
+ */
+export async function getOrderById(orderId: string): Promise<OrderRecord | null> {
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId));
+
+  return order ?? null;
+}
+
+/**
+ * Fetch a single order by its ID and verify ownership by user ID.
+ */
+export async function getOrderByIdAndUserId(
+  orderId: string,
+  userId: string,
+): Promise<OrderRecord | null> {
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.id, orderId), eq(orders.userId, userId)));
+
+  return order ?? null;
+}
 
 /**
  * Create a new order and its line items atomically.
@@ -55,16 +85,36 @@ export async function createOrderWithItems(
 }
 
 /**
- * Update the status of an order.
+ * Update the status of an order. Supports passing an optional transaction executor.
  */
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
+  txOrDb: DrizzleExecutor = db,
 ): Promise<void> {
-  await db
+  await txOrDb
     .update(orders)
     .set({ status, updatedAt: new Date() })
     .where(eq(orders.id, orderId));
+}
+
+/**
+ * Atomically update order status only if it is currently in PENDING state.
+ * Returns true if the order status was updated, or false if it was already confirmed/canceled.
+ * This guarantees strict idempotency during webhook re-deliveries.
+ */
+export async function updateOrderStatusIfPending(
+  orderId: string,
+  newStatus: OrderStatus,
+  txOrDb: DrizzleExecutor = db,
+): Promise<boolean> {
+  const result = await txOrDb
+    .update(orders)
+    .set({ status: newStatus, updatedAt: new Date() })
+    .where(and(eq(orders.id, orderId), eq(orders.status, ORDER_STATUS.PENDING)))
+    .returning({ id: orders.id });
+
+  return result.length > 0;
 }
 
 /**
@@ -107,5 +157,3 @@ export async function getIncomingOrdersForRestaurants(restaurantIds: string[]) {
     .where(inArray(orders.restaurantId, restaurantIds))
     .orderBy(desc(orders.createdAt));
 }
-
-

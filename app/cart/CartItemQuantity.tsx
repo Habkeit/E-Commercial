@@ -2,6 +2,7 @@
 "use client";
 
 import { useCartStore } from "@/app/store/cartStore";
+import { useTranslations } from "next-intl";
 
 interface CartItemQuantityProps {
   cartId: string;
@@ -15,6 +16,7 @@ export default function CartItemQuantity({
   updateItemQuantity,
 }: CartItemQuantityProps) {
   const fetchCart = useCartStore((state) => state.fetchCart);
+  const t = useTranslations("Common");
 
   const handleAction = async (formData: FormData) => {
     await updateItemQuantity(formData);
@@ -59,7 +61,7 @@ export default function CartItemQuantity({
           name="action"
           value="remove"
           className="p-2 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
-          title="Remove item"
+          title={t("removeItem")}
         >
           🗑️
         </button>

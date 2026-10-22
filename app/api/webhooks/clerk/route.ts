@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
+  // Use raw text to guarantee cryptographic HMAC signature validity
+  const body = await req.text();
 
   const wh = new Webhook(WEBHOOK_SECRET);
   let evt: WebhookEvent;

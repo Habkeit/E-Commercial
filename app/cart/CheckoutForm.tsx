@@ -105,23 +105,28 @@ export default function CheckoutForm({
     setIsSubmitting(true);
 
     if (!selectedProvince || !selectedDistrict || !selectedWard || !street.trim()) {
-      messageApi.warning(t("fillAddress", { fallback: "Vui lòng nhập đầy đủ địa chỉ!" }));
+      messageApi.warning(t("fillAddress"));
       setIsSubmitting(false);
       return;
     }
 
-    const result = await handleCheckout(formData);
+    try {
+      const result = await handleCheckout(formData);
 
-    if (result && !result.success) {
-      messageApi.error(result.message || "Đã xảy ra lỗi");
+      if (result && !result.success) {
+        messageApi.error(result.message || t("checkoutFailed"));
+        setIsSubmitting(false);
+      } else if (result && result.success && result.url) {
+        window.location.href = result.url;
+      } else {
+        clearCart();
+        router.push(APP_ROUTES.ORDERS);
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("Checkout submission failed:", err);
+      messageApi.error(t("connectionError"));
       setIsSubmitting(false);
-    } else if (result && result.success && result.url) {
-      clearCart();
-      window.location.href = result.url;
-    } else {
-      clearCart();
-      router.push(APP_ROUTES.ORDERS);
-      router.refresh();
     }
   };
 
@@ -156,7 +161,7 @@ export default function CheckoutForm({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none bg-white text-gray-800"
           >
             <option value="" disabled>
-              {t("province", { fallback: "Tỉnh / Thành phố" })}
+              {t("province")}
             </option>
             {provinces.map((p) => (
               <option key={p.code} value={p.code}>
@@ -172,7 +177,7 @@ export default function CheckoutForm({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none bg-white text-gray-800 disabled:bg-gray-100 disabled:text-gray-400"
           >
             <option value="" disabled>
-              {t("district", { fallback: "Quận / Huyện" })}
+              {t("district")}
             </option>
             {districts.map((d) => (
               <option key={d.code} value={d.code}>
@@ -188,7 +193,7 @@ export default function CheckoutForm({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none bg-white text-gray-800 disabled:bg-gray-100 disabled:text-gray-400"
           >
             <option value="" disabled>
-              {t("ward", { fallback: "Phường / Xã" })}
+              {t("ward")}
             </option>
             {wards.map((w) => (
               <option key={w.code} value={w.code}>
@@ -202,7 +207,7 @@ export default function CheckoutForm({
           type="text"
           value={street}
           onChange={(e) => setStreet(e.target.value)}
-          placeholder={t("streetDetails", { fallback: "Số nhà, tên đường..." })}
+          placeholder={t("streetDetails")}
           className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none text-gray-800 placeholder-gray-400"
         />
 
@@ -225,7 +230,7 @@ export default function CheckoutForm({
             : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
           }`}
       >
-        {isSubmitting ? t("processing", { fallback: "Đang xử lý..." }) : t("confirmOrder", { fallback: "Thanh toán bằng thẻ" })}
+        {isSubmitting ? t("processing") : t("confirmOrder")}
       </button>
     </form>
   );
