@@ -1,68 +1,60 @@
-// app/restaurants/[id]/page.tsx
-import { db } from "@/db";
-import { restaurants, dishes, categories } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+// app/restaurant/[id]/page.tsx
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { addToCart } from "./actions";
+import { getTranslations } from "next-intl/server";
+import CategoryDishList from "./CategoryDishList";
+import {
+  getRestaurantById,
+  getCategoriesByRestaurantId,
+  getPublicDishesByRestaurantId,
+} from "@/lib/services/restaurant.service";
+import { APP_ROUTES } from "@/lib/constants";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }> | { id: string };
 }
 
 export default async function RestaurantDetailPage({ params }: PageProps) {
   const { id } = await params;
-
-  // 1. Lấy thông tin nhà hàng
-  const [restaurant] = await db
-    .select()
-    .from(restaurants)
-    .where(eq(restaurants.id, id));
+  const restaurant = await getRestaurantById(id);
 
   if (!restaurant) {
     notFound();
   }
 
-  // 2. Lấy danh mục của riêng nhà hàng này, sắp xếp theo sortOrder
-  const restaurantCategories = await db
-    .select()
-    .from(categories)
-    .where(eq(categories.restaurantId, id))
-    .orderBy(asc(categories.sortOrder));
+  const [restaurantCategories, restaurantDishes] = await Promise.all([
+    getCategoriesByRestaurantId(id),
+    getPublicDishesByRestaurantId(id),
+  ]);
 
-  // 3. Lấy toàn bộ món ăn thuộc nhà hàng này
-  const restaurantDishes = await db
-    .select()
-    .from(dishes)
-    .where(eq(dishes.restaurantId, id));
+  const tCommon = await getTranslations("Common");
+  const tDetail = await getTranslations("RestaurantDetail");
 
   return (
     <main className="min-h-screen bg-gray-50 py-10 px-6">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Thanh điều hướng */}
         <div className="flex justify-between items-center">
           <Link
-            href="/foods"
+            href={APP_ROUTES.FOODS}
             className="text-rose-600 font-medium hover:underline flex items-center gap-1"
           >
-            ← Back to Restaurants
+            ← {tCommon("backToMenu")}
           </Link>
           <div className="flex gap-3">
             <Link
-              href="/cart"
+              href={APP_ROUTES.CART}
               className="px-4 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl hover:bg-rose-700 transition-all shadow-sm flex items-center gap-2"
             >
-              <span>🛒</span> View Cart
+              <span>🛒</span> {tCommon("cart")}
             </Link>
             <Link
-              href="/orders"
+              href={APP_ROUTES.ORDERS}
               className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-all shadow-sm"
             >
-              📦 My Orders
+              📦 {tCommon("orders")}
             </Link>
           </div>
         </div>
-
 
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-3">
           <h1 className="text-3xl font-extrabold text-gray-900">
@@ -79,11 +71,10 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
           )}
         </div>
 
-
         <div className="space-y-10">
           {restaurantCategories.length === 0 ? (
             <p className="text-center text-gray-500 bg-white p-8 rounded-2xl border border-gray-100">
-              This restaurant has no categories or dishes available at the moment. Please check back later!
+              {tDetail("noCategoriesOrDishes")}
             </p>
           ) : (
             restaurantCategories.map((category) => {
@@ -106,42 +97,16 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {dishesInCategory.map((dish) => (
-                      <div
-                        key={dish.id}
-                        className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between gap-4 hover:shadow-md transition-shadow"
-                      >
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">
-                            {dish.name}
-                          </h3>
-                          <p className="text-gray-500 text-sm mt-1 line-clamp-2">
-                            {dish.description || "Không có mô tả chi tiết."}
-                          </p>
-                        </div>
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-50">
-                          <span className="text-rose-600 font-extrabold text-lg">
-                            {Number(dish.price).toLocaleString()} VND
-                          </span>
-
-                          <form
-                            action={async () => {
-                              "use server";
-                              await addToCart(dish.id);
-                            }}
-                          >
-                            <button
-                              type="submit"
-                              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
-                            >
-                              Add to Cart
-                            </button>
-                          </form>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <CategoryDishList
+                    dishes={dishesInCategory.map((dish) => ({
+                      id: dish.id,
+                      name: dish.name,
+                      description: dish.description,
+                      price: String(dish.price),
+                      status: dish.status,
+                      categoryId: dish.categoryId,
+                    }))}
+                  />
                 </div>
               );
             })

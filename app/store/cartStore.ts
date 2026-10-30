@@ -1,3 +1,4 @@
+// app/store/cartStore.ts
 import { create } from "zustand";
 
 export interface CartItem {
@@ -22,7 +23,6 @@ interface CartState {
 export const useCartStore = create<CartState>((set, get) => ({
   cart: [],
 
-  // Lấy giỏ hàng từ Database lên
   fetchCart: async () => {
     try {
       const res = await fetch("/api/cart");
@@ -36,7 +36,6 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   addToCart: async (item) => {
-    // Cập nhật giao diện trước cho mượt (Optimistic Update) hoặc gọi API xong fetch lại
     try {
       await fetch("/api/cart", {
         method: "POST",
@@ -47,7 +46,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           note: item.note,
         }),
       });
-      await get().fetchCart(); // Tải lại giỏ hàng mới nhất từ DB
+      await get().fetchCart();
     } catch (err) {
       console.error("Add to cart error", err);
     }
@@ -68,7 +67,6 @@ export const useCartStore = create<CartState>((set, get) => ({
         i.dishId === dishId ? { ...i, quantity: Math.max(1, quantity) } : i,
       ),
     }));
-    // Bạn có thể gọi API cập nhật số lượng ở đây nếu muốn lưu chặt chẽ vào DB
   },
 
   clearCart: () => set({ cart: [] }),

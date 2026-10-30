@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   if (!WEBHOOK_SECRET) {
     return NextResponse.json(
       { error: "Missing CLERK_WEBHOOK_SECRET" },
-      { status: 500 },
+      { status: 400 },
     );
   }
 
@@ -62,6 +62,7 @@ export async function POST(req: Request) {
 
       if (!existingUser) {
         await db.insert(users).values({
+          id: crypto.randomUUID(),
           clerkId: id,
           email,
           fullName,
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
       }
     } catch (dbError) {
       console.error("Database error during webhook processing:", dbError);
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
+      return NextResponse.json({ error: "Database error" }, { status: 400 });
     }
   }
 

@@ -6,6 +6,7 @@ import {
   varchar,
   timestamp,
   integer,
+  boolean,
   decimal,
   pgEnum,
 } from "drizzle-orm/pg-core";
@@ -33,7 +34,7 @@ export const users = pgTable("users", {
 
 export const restaurants = pgTable("restaurants", {
   id: uuid("id").primaryKey(),
-  userId: uuid("user_id").notNull().unique(),
+  userId: text("user_id").notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   houseNumber: varchar("house_number", { length: 50 }).notNull(),
   street: varchar("street", { length: 100 }).notNull(),
@@ -49,7 +50,7 @@ export const restaurants = pgTable("restaurants", {
 
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey(),
-  restaurantId: uuid("restaurant_id").notNull(),
+  restaurantId: text("restaurant_id").notNull(),
   name: varchar("name", { length: 100 }).notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   description: text("description"),
@@ -59,11 +60,15 @@ export const categories = pgTable("categories", {
 
 export const dishes = pgTable("dishes", {
   id: uuid("id").primaryKey(),
-  restaurantId: uuid("restaurant_id").notNull(),
+  restaurantId: text("restaurant_id").notNull(),
   categoryId: uuid("category_id").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   price: decimal("price", { precision: 15, scale: 2 }).notNull(),
   description: text("description"),
+  stock: integer("stock").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  status: text("status").default("active").notNull(),
+  stripePriceId: text("stripe_price_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -71,6 +76,7 @@ export const dishes = pgTable("dishes", {
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey(),
   userId: uuid("user_id").notNull(),
+  restaurantId: uuid("restaurant_id").notNull(),
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   deliveryAddress: text("delivery_address").notNull(),
   status: orderStatusEnum("status").notNull().default("Pending"),
@@ -91,7 +97,7 @@ export const orderItems = pgTable("order_items", {
 
 export const cartItems = pgTable("cart_items", {
   id: uuid("id").primaryKey(),
-  userId: uuid("user_id").notNull(),
+  userId: text("user_id").notNull(),
   dishId: uuid("dish_id").notNull(),
   quantity: integer("quantity").notNull(),
   note: text("note"),
@@ -102,7 +108,7 @@ export const cartItems = pgTable("cart_items", {
 // --- RELATIONS ---
 export const usersRelations = relations(users, ({ one, many }) => ({
   restaurant: one(restaurants, {
-    fields: [users.id],
+    fields: [users.clerkId],
     references: [restaurants.userId],
   }),
   orders: many(orders),
@@ -112,7 +118,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
   user: one(users, {
     fields: [restaurants.userId],
-    references: [users.id],
+    references: [users.clerkId],
   }),
   categories: many(categories),
   dishes: many(dishes),

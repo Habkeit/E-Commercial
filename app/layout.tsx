@@ -5,47 +5,59 @@ import { ClerkProvider } from "@clerk/nextjs";
 import Link from "next/link";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import SyncCart from "@/components/SyncCart";
-import SyncUser from "@/components/SyncUser";
+
+
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getLocale, getTranslations } from "next-intl/server";
 
 const inter = Inter({ subsets: ["latin"] });
+
+import { APP_ROUTES } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Food Delivery App",
   description: "Order your favorite food online easily and quickly.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
+  const t = await getTranslations("RestaurantDashboard");
+
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang={locale}>
         <body className={inter.className}>
-          <Navbar />
-          {/* <SyncCart />
-          <SyncUser /> */}
-          
-          <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-end gap-4">
-            <Link
-              href="/restaurant/dashboard"
-              className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
-            >
-              🏪 Restaurant Dashboard
-            </Link>
-            <Link
-              href="/restaurant/register"
-              className="text-sm font-medium text-gray-700 hover:text-rose-500 transition-colors"
-            >
-              Register Restaurant 🏪
-            </Link>
-          </div>
+          <NextIntlClientProvider messages={messages}>
+            <Navbar />
 
-          {children}
+            <div className="bg-white border-b border-gray-100 py-2 px-6 flex justify-end items-center gap-4">
+              <div className="flex items-center gap-4">
+                <Link
+                  href={APP_ROUTES.RESTAURANT_DASHBOARD}
+                  className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                >
+                  🏪 {t("restaurantDashboard")}
+                </Link>
+                <Link
+                  href={APP_ROUTES.RESTAURANT_REGISTER}
+                  className="text-sm font-medium text-gray-700 hover:text-rose-500 transition-colors"
+                >
+                  {t("restaurantRegister")} 🏪
+                </Link>
+              </div>
+            </div>
+
+            {children}
+          </NextIntlClientProvider>
         </body>
       </html>
     </ClerkProvider>
   );
 }
+
